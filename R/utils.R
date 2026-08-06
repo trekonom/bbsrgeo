@@ -1,7 +1,7 @@
 bbsrgeo_user_agent <- function() {
   paste0(
     "bbsrgeo/", as.character(utils::packageVersion("bbsrgeo")),
-    " (R-Paket fuer BBSR-Umstiegsschluessel; Kontakt: stefan.moog@prognos.com)"
+    " (R package for BBSR area crosswalks; contact: stefan.moog@prognos.com)"
   )
 }
 
@@ -13,27 +13,27 @@ bbsrgeo_cache_dir <- function(cache_dir = NULL) {
   cache_dir
 }
 
-#' AGS-Werte auf ein einheitliches 8-stelliges Format normalisieren
+#' Normalize AGS values to a consistent 8-digit format
 #'
-#' Kreis- und Gemeindeschluessel werden vom BBSR in den xlsx-Dateien teils als
-#' Zahl, teils als Text abgelegt. Bei Bundeslaendern mit Laendercode "01" bis
-#' "09" geht dabei die fuehrende Null verloren, sobald eine Zelle als Zahl
-#' interpretiert wird. Diese Funktion erzwingt einheitlich ein 8-stelliges,
-#' nullgepolstertes Text-Format.
+#' The BBSR stores district/municipality keys (AGS) in its xlsx files partly
+#' as numbers, partly as text. For federal states with country code "01" to
+#' "09", the leading zero is lost as soon as a cell is interpreted as a
+#' number. This function enforces a consistent, zero-padded 8-digit text
+#' format.
 #'
-#' @param x Character- oder numerischer Vektor mit AGS-Werten.
-#' @return Character-Vektor mit 8-stelligen AGS (oder `NA`).
+#' @param x Character or numeric vector of AGS values.
+#' @return Character vector of 8-digit AGS values (or `NA`).
 #' @noRd
-normalisiere_ags <- function(x) {
+normalize_ags <- function(x) {
   x <- trimws(as.character(x))
   x[!nzchar(x)] <- NA_character_
 
   ags_num <- suppressWarnings(as.numeric(x))
-  ungueltig <- is.na(ags_num) & !is.na(x)
-  if (any(ungueltig)) {
+  invalid <- is.na(ags_num) & !is.na(x)
+  if (any(invalid)) {
     rlang::warn(sprintf(
-      "%d AGS-Wert(e) konnten nicht als Zahl interpretiert werden und wurden auf NA gesetzt (z. B. '%s').",
-      sum(ungueltig), x[which(ungueltig)[1]]
+      "%d AGS value(s) could not be parsed as a number and were set to NA (e.g. '%s').",
+      sum(invalid), x[which(invalid)[1]]
     ))
   }
 

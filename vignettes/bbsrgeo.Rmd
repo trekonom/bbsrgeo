@@ -19,203 +19,204 @@ library(bbsrgeo)
 library(dplyr)
 ```
 
-## Hintergrund
+## Background
 
-Seit der Deutschen Einheit gab es in Deutschland - insbesondere in Ostdeutschland -
-zahlreiche Gebietsreformen: Gemeinden wurden zusammengelegt, Kreise neu
-zugeschnitten. Fuer die Raumbeobachtung ist das ein Problem, denn eine
-Zeitreihe der Einwohnerzahl "des Kreises X" ist nur dann sinnvoll
-interpretierbar, wenn X ueber die Zeit dieselbe Flaeche bezeichnet. Aendert
-sich der Gebietszuschnitt, aendern sich die Werte allein dadurch - unabhaengig
-von der tatsaechlichen Entwicklung vor Ort.
+Since German reunification there have been numerous boundary reforms in
+Germany - especially in eastern Germany: municipalities were merged,
+districts redrawn. This is a problem for regional monitoring, because a
+time series of the population of "district X" is only meaningful if X
+refers to the same area throughout. If the boundary changes, the values
+change purely because of that - independent of what actually happened on
+the ground.
 
-Das BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) veroeffentlicht
-dafuer **Umstiegsschluessel**: Tabellen, die fuer jede Gebietseinheit und
-jeden Jahresuebergang angeben, welcher Anteil ihrer Flaeche, Bevoelkerung
-bzw. (ab 1997) Beschaeftigten in welche Nachfolgeeinheit uebergegangen ist.
-`bbsrgeo` laedt diese Schluessel herunter, liest sie in ein einheitliches
-Format ein und rechnet damit Regionalstatistik-Zeitreihen auf einen
-konsistenten Gebietsstand um.
+For this purpose, the BBSR (Bundesinstitut fuer Bau-, Stadt- und
+Raumforschung, Germany's Federal Institute for Research on Building, Urban
+Affairs and Spatial Development) publishes **area crosswalks**
+("Umstiegsschluessel"): tables that state, for every area unit and every
+year transition, what share of its area, population, or (from 1997)
+employment moved into which successor unit. `bbsrgeo` downloads these
+crosswalks, reads them into a consistent format, and uses them to convert
+regional statistics time series onto a consistent set of area boundaries.
 
-## Umstiegsschluessel laden
+## Loading a crosswalk
 
-`bbsr_umstieg_verfuegbar()` listet, welche Tabellen das BBSR anbietet:
+`bbsr_crosswalk_available()` lists which tables the BBSR offers:
 
 ```{r}
-bbsr_umstieg_verfuegbar("Kreise")
+bbsr_crosswalk_available("districts")
 ```
 
-Im echten Einsatz laedt man die passende Datei mit `bbsr_umstieg_download()`
-herunter (das Ergebnis wird lokal gecacht) und liest sie mit
-`bbsr_umstieg_read()` ein:
+In real use, you would download the matching file with
+`bbsr_crosswalk_download()` (the result is cached locally) and read it with
+`bbsr_crosswalk_read()`:
 
 ```{r, eval = FALSE}
-pfad <- bbsr_umstieg_download(ebene = "Kreise", art = "jaehrlich")
-umstieg <- bbsr_umstieg_read(pfad)
+path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
+crosswalk <- bbsr_crosswalk_read(path)
 ```
 
-Fuer dieses Vignette bauen wir denselben Umstiegsschluessel stattdessen von
-Hand nach - er hat genau die Form, die `bbsr_umstieg_read()` zurueckgibt -
-damit das Beispiel ohne Internetzugriff nachvollziehbar bleibt.
+For this vignette we instead build the same crosswalk by hand - it has
+exactly the shape that `bbsr_crosswalk_read()` returns - so the example
+stays reproducible without internet access.
 
-## Beispiel: drei fiktive Kreise mit einer Gebietsreform
+## Example: three fictional districts with a boundary reform
 
-Wir nehmen drei **frei erfundene** Kreise an: "Nordkreis" und "Suedkreis"
-fusionieren zum 1.1.2021 vollstaendig zum neuen "Musterkreis"; "Bergkreis"
-bleibt unveraendert.
+We assume three **entirely fictional** districts: "Northdistrict" and
+"Southdistrict" fully merge on 2021-01-01 into the new "Sampledistrict";
+"Hilldistrict" stays unchanged.
 
-Bis 2020 bleiben alle drei Kreise unveraendert (Anteil = 1 auf sich selbst);
-erst im Uebergang 2020 -> 2021 gehen Nordkreis und Suedkreis vollstaendig im
-neuen Musterkreis auf. Ein `"jaehrlich"`-Umstiegsschluessel enthaelt genau
-eine solche Zeilengruppe je Jahresuebergang - `regio_konsistent()` verkettet
-sie bei Bedarf automatisch (siehe Abschnitt
-["Verkettung"](#verkettung-und-umrechnung-auf-ein-festes-zieljahr) unten):
+Through 2020, all three districts remain unchanged (share = 1 onto
+themselves); only in the 2020 -> 2021 transition do Northdistrict and
+Southdistrict fully merge into the new Sampledistrict. An `"annual"`
+crosswalk contains exactly one such group of rows per year transition -
+`harmonize_regions()` chains them automatically as needed (see the
+["Chaining"](#chaining-and-conversion-to-a-fixed-target-year) section
+below):
 
 ```{r}
-umstieg <- tibble::tribble(
-  ~ags_alt,   ~name_alt,   ~ags_neu,   ~name_neu,     ~jahr_von, ~jahr_bis,
-  "99001000", "Nordkreis", "99001000", "Nordkreis",   2018L,     2019L,
-  "99002000", "Suedkreis", "99002000", "Suedkreis",   2018L,     2019L,
-  "99003000", "Bergkreis", "99003000", "Bergkreis",   2018L,     2019L,
-  "99001000", "Nordkreis", "99001000", "Nordkreis",   2019L,     2020L,
-  "99002000", "Suedkreis", "99002000", "Suedkreis",   2019L,     2020L,
-  "99003000", "Bergkreis", "99003000", "Bergkreis",   2019L,     2020L,
-  "99001000", "Nordkreis", "99009000", "Musterkreis", 2020L,     2021L,
-  "99002000", "Suedkreis", "99009000", "Musterkreis", 2020L,     2021L,
-  "99003000", "Bergkreis", "99003000", "Bergkreis",   2020L,     2021L,
+crosswalk <- tibble::tribble(
+  ~ags_old,   ~name_old,       ~ags_new,   ~name_new,        ~year_from, ~year_to,
+  "99001000", "Northdistrict", "99001000", "Northdistrict",  2018L,      2019L,
+  "99002000", "Southdistrict", "99002000", "Southdistrict",  2018L,      2019L,
+  "99003000", "Hilldistrict",  "99003000", "Hilldistrict",   2018L,      2019L,
+  "99001000", "Northdistrict", "99001000", "Northdistrict",  2019L,      2020L,
+  "99002000", "Southdistrict", "99002000", "Southdistrict",  2019L,      2020L,
+  "99003000", "Hilldistrict",  "99003000", "Hilldistrict",   2019L,      2020L,
+  "99001000", "Northdistrict", "99009000", "Sampledistrict", 2020L,      2021L,
+  "99002000", "Southdistrict", "99009000", "Sampledistrict", 2020L,      2021L,
+  "99003000", "Hilldistrict",  "99003000", "Hilldistrict",   2020L,      2021L,
 ) |>
   mutate(
-    anteil_flaeche = 1,       # bis 2020 unveraendert, danach gehen Nordkreis/
-    anteil_bevoelkerung = 1,  # Suedkreis jeweils VOLLSTAENDIG im Musterkreis
-    anteil_beschaeftigte = NA_real_,  # auf -> auch dort Anteil = 1 (siehe oben)
-    flaeche_alt = rep(c(550, 450, 300), 3),
-    bevoelkerung_alt = c(52000, 38000, 21000, 52300, 38200, 21050, 52600, 38500, 21100),
-    beschaeftigte_alt = NA_real_
+    share_area = 1,             # unchanged through 2020, then Northdistrict/
+    share_population = 1,       # Southdistrict FULLY merge into Sampledistrict
+    share_employment = NA_real_,  # -> share = 1 there too (see above)
+    area_old = rep(c(550, 450, 300), 3),
+    population_old = c(52000, 38000, 21000, 52300, 38200, 21050, 52600, 38500, 21100),
+    employment_old = NA_real_
   )
-umstieg
+crosswalk
 ```
 
-Und ein synthetischer Regionalstatistik-Datensatz im langen Panelformat: die
-Einwohnerzahl (eine absolute Groesse) und eine Arbeitslosenquote (eine
-Verhaeltniszahl) je Kreis und Jahr, jeweils auf dem zum Zeitpunkt gueltigen
-Gebietsstand:
+And a synthetic regional statistics dataset in long panel format: the
+population (an absolute quantity) and an unemployment rate (a ratio) per
+district and year, each on the boundary valid at that point in time:
 
 ```{r}
-regionaldaten <- tibble::tribble(
-  ~ags,       ~jahr, ~einwohner, ~alq,
-  "99001000", 2018L,      52000,  6.2,
-  "99001000", 2019L,      52300,  6.0,
-  "99001000", 2020L,      52600,  6.5,
-  "99002000", 2018L,      38000,  5.0,
-  "99002000", 2019L,      38200,  4.8,
-  "99002000", 2020L,      38500,  5.3,
-  "99003000", 2018L,      21000,  4.1,
-  "99003000", 2019L,      21050,  4.0,
-  "99003000", 2020L,      21100,  4.2,
+regional_data <- tibble::tribble(
+  ~ags,       ~year, ~population, ~unemployment_rate,
+  "99001000", 2018L,       52000,                6.2,
+  "99001000", 2019L,       52300,                6.0,
+  "99001000", 2020L,       52600,                6.5,
+  "99002000", 2018L,       38000,                5.0,
+  "99002000", 2019L,       38200,                4.8,
+  "99002000", 2020L,       38500,                5.3,
+  "99003000", 2018L,       21000,                4.1,
+  "99003000", 2019L,       21050,                4.0,
+  "99003000", 2020L,       21100,                4.2,
 )
-regionaldaten
+regional_data
 ```
 
-## Vor der Umrechnung pruefen
+## Checking before conversion
 
-`regio_pruefen()` zeigt, ob alle vorkommenden AGS im Umstiegsschluessel
-bekannt sind - so fallen Tippfehler oder Luecken auf, bevor sie in der
-Umrechnung stillschweigend zu Datenverlust fuehren:
+`check_regions()` shows whether all AGS values present are known to the
+crosswalk - so typos or gaps become visible before they silently cause data
+loss in the conversion:
 
 ```{r}
-regio_pruefen(regionaldaten, umstieg, ags_spalte = "ags")
+check_regions(regional_data, crosswalk, ags_col = "ags")
 ```
 
-## Umrechnung auf einen konsistenten Gebietsstand
+## Converting to a consistent boundary
 
-### Absolute Werte: Einwohnerzahl
+### Absolute values: population
 
-Fuer absolute Groessen wie die Einwohnerzahl werden die Werte der
-Ausgangseinheiten gemaess ihrem Anteil aufsummiert (`typ = "absolut"`):
+For absolute quantities such as population, the values of the source units
+are summed according to their share (`type = "absolute"`):
 
 ```{r}
-einwohner_konsistent <- regio_konsistent(
-  regionaldaten,
-  umstiegsschluessel = umstieg,
-  ags_spalte = "ags",
-  jahr_spalte = "jahr",
-  wert_spalten = "einwohner",
-  typ = "absolut",
-  gewicht = "bevoelkerung",
-  ziel_gebietsstand = 2021L,
-  ebene = "Kreise"
+population_consistent <- harmonize_regions(
+  regional_data,
+  crosswalk = crosswalk,
+  ags_col = "ags",
+  year_col = "year",
+  value_cols = "population",
+  type = "absolute",
+  weight = "population",
+  target_year = 2021L,
+  level = "districts"
 )
-einwohner_konsistent
+population_consistent
 ```
 
-Nordkreis und Suedkreis sind jetzt zum Musterkreis zusammengefasst (z. B.
-2020: 52600 + 38500 = 91100 Einwohner), Bergkreis bleibt unveraendert - alle
-drei Jahre liegen nun auf demselben Gebietsstand (2021) vor und sind damit
-vergleichbar.
+Northdistrict and Southdistrict are now combined into Sampledistrict (e.g.
+2020: 52600 + 38500 = 91100 population), Hilldistrict stays unchanged - all
+three years are now on the same boundary (2021) and therefore comparable.
 
-### Verhaeltniszahlen: Arbeitslosenquote
+### Ratios: unemployment rate
 
-Fuer eine Verhaeltniszahl wie die Arbeitslosenquote waere eine simple Summe
-falsch - hier bildet `typ = "verhaeltnis"` stattdessen den mit der
-gewaehlten Basis (hier: Bevoelkerung) gewichteten Mittelwert:
+For a ratio such as the unemployment rate, a simple sum would be wrong -
+here `type = "ratio"` instead computes the weighted average using the
+chosen basis (here: population):
 
 ```{r}
-alq_konsistent <- regio_konsistent(
-  regionaldaten,
-  umstiegsschluessel = umstieg,
-  ags_spalte = "ags",
-  jahr_spalte = "jahr",
-  wert_spalten = "alq",
-  typ = "verhaeltnis",
-  gewicht = "bevoelkerung",
-  ziel_gebietsstand = 2021L,
-  ebene = "Kreise"
+rate_consistent <- harmonize_regions(
+  regional_data,
+  crosswalk = crosswalk,
+  ags_col = "ags",
+  year_col = "year",
+  value_cols = "unemployment_rate",
+  type = "ratio",
+  weight = "population",
+  target_year = 2021L,
+  level = "districts"
 )
-alq_konsistent
+rate_consistent
 ```
 
-### Wahl der Gewichtungsbasis
+### Choosing the weighting basis
 
-`gewicht` bestimmt, mit welchem der drei vom BBSR bereitgestellten
-Anteilswerte gerechnet wird. Als Faustregel:
+`weight` determines which of the three shares provided by the BBSR is used.
+As a rule of thumb:
 
-* **`"bevoelkerung"`**: fuer sozioekonomische Absolutwerte und die meisten
-  Verhaeltniszahlen.
-* **`"flaeche"`**: fuer Flaechennutzungs-, Agrar- oder Umweltdaten.
-* **`"beschaeftigte"`**: fuer Wirtschaftsdaten (der Unterschied zur
-  bevoelkerungsproportionalen Umrechnung ist meist gering; nur ab 1997
-  verfuegbar).
+* **`"population"`**: for absolute socioeconomic values and most ratios.
+* **`"area"`**: for land-use, agricultural, or environmental data.
+* **`"employment"`**: for economic data (the difference from
+  population-weighted conversion is usually small; only available from
+  1997 onward).
 
-## Verkettung und Umrechnung auf ein festes Zieljahr
+## Chaining and conversion to a fixed target year
 
-Deckt der uebergebene Umstiegsschluessel mehrere aufeinanderfolgende
-Jahresuebergaenge ab (`art = "jaehrlich"` bei `bbsr_umstieg_download()`),
-verkettet `regio_konsistent()` die noetigen Einzeljahres-Schritte automatisch,
-um von einem beliebigen Ausgangsjahr zum gewuenschten `ziel_gebietsstand` zu
-gelangen. Alternativ liefert das BBSR fuer die Zieljahre 2019/2020/2021
-bereits vorverkettete `"umrechnung_*"`-Tabellen (`art = "umrechnung_2021"`
-usw.), die jedes historische Jahr direkt auf das Zieljahr abbilden - hier
-erfolgt die Umrechnung dann in einem einzigen Schritt.
+If the crosswalk provided covers multiple consecutive year transitions
+(`kind = "annual"` in [bbsr_crosswalk_download()]), `harmonize_regions()`
+automatically chains the individual year steps needed to get from any
+source year to the desired `target_year`. Alternatively, the BBSR provides
+already pre-chained `"conversion_*"` tables for target years 2019/2020/2021
+(`kind = "conversion_2021"` etc.), which map every historical year directly
+onto the target year - in that case the conversion happens in a single
+step.
 
-## Rueckrechnung (Disaggregation)
+## Backcasting (disaggregation)
 
-Die Umstiegsschluessel des BBSR sind fuer die **Vorwaertsrechnung** (alter
-zu neuerem/aktuellem Gebietsstand) konzipiert. Eine Rueckrechnung - also die
-Verteilung von Werten des neuen Gebietsstands auf die kleinteiligeren alten
-Einheiten - ist grundsaetzlich fehleranfaelliger, da unterstellt werden muss,
-dass sich der Indikator innerhalb der neuen Einheit gleichmaessig gemaess
-Flaeche/Bevoelkerung/Beschaeftigten verteilt. `regio_konsistent()`
-unterstuetzt das als explizit zu aktivierende, experimentelle Option
-(`erlaube_rueckrechnung = TRUE`), die zudem eine Warnung ausgibt.
+BBSR crosswalks are designed for **forward conversion** (older to
+newer/current boundary). Backcasting - i.e. distributing values from the
+newer boundary onto the more granular older units - is inherently more
+error-prone, since it has to assume that the indicator is distributed
+evenly within the new unit according to area/population/employment.
+`harmonize_regions()` supports this as an explicitly-opt-in, experimental
+option (`allow_backcast = TRUE`), which also emits a warning.
 
-## Hintergrund/Weiterfuehrende Literatur
+## Background/Further reading
 
 BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) (2010):
-*Gebietsreformen - politische Entscheidungen und Folgen fuer die Statistik.*
-BBSR-Berichte KOMPAKT 6/2010. Bonn. ISBN 978-3-87994-391-3, ISSN 1867-0547.
+*Gebietsreformen - politische Entscheidungen und Folgen fuer die Statistik*
+["Boundary reforms - political decisions and their consequences for
+statistics"]. BBSR-Berichte KOMPAKT 6/2010. Bonn. ISBN 978-3-87994-391-3,
+ISSN 1867-0547.
 <https://www.bbsr.bund.de/BBSR/DE/veroeffentlichungen/berichte-kompakt/2010/BK062010.html>
 
-Der Bericht dokumentiert die Gebietsreformen in Deutschland (insbesondere
-Ostdeutschland) seit 1990, erlaeutert die daraus entstehenden Gebietsbrueche
-in der Raumbeobachtung und beschreibt die Rechenverfahren, auf denen die
-BBSR-Umstiegsschluessel - und damit auch dieses Paket - methodisch beruhen.
+This report (German only) documents the boundary reforms in Germany
+(especially eastern Germany) since 1990, explains the resulting
+discontinuities for regional monitoring, and describes the calculation
+methods that BBSR area crosswalks - and thus this package - are
+methodologically based on.

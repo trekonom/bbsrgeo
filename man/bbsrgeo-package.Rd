@@ -4,9 +4,9 @@
 \name{bbsrgeo-package}
 \alias{bbsrgeo}
 \alias{bbsrgeo-package}
-\title{bbsrgeo: Zugriff und Umrechnung von BBSR-Umstiegsschluesseln fuer die Regionalstatistik}
+\title{bbsrgeo: Access and Convert BBSR Area Crosswalks for German Regional Statistics}
 \description{
-Werkzeuge zum Download und Einlesen der vom BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) veroeffentlichten Umstiegsschluessel fuer Gemeinden und Kreise sowie zur Umrechnung von Regionalstatistik-Zeitreihen der Regionaldatenbank Deutschland (GENESIS-Regio) auf einen konsistenten Gebietsstand.
+Tools to download and read the area crosswalks ('Umstiegsschluessel') for municipalities and districts published by the BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung, Germany's Federal Institute for Research on Building, Urban Affairs and Spatial Development), and to convert German regional statistics time series from the Regionaldatenbank Deutschland (GENESIS-Regio) onto a consistent set of area boundaries.
 }
 \author{
 \strong{Maintainer}: Stefan Moog \email{stefan.moog@prognos.com}
