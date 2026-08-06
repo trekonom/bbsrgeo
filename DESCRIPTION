@@ -1,0 +1,33 @@
+Package: bbsrgeo
+Title: Zugriff und Umrechnung von BBSR-Umstiegsschluesseln fuer die
+    Regionalstatistik
+Version: 0.0.0.9000
+Authors@R:
+    person("Stefan", "Moog", email = "stefan.moog@prognos.com", role = c("aut", "cre"))
+Description: Werkzeuge zum Download und Einlesen der vom BBSR
+    (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) veroeffentlichten
+    Umstiegsschluessel fuer Gemeinden und Kreise sowie zur Umrechnung von
+    Regionalstatistik-Zeitreihen der Regionaldatenbank Deutschland
+    (GENESIS-Regio) auf einen konsistenten Gebietsstand.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Language: de
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
+Imports:
+    dplyr,
+    httr2,
+    purrr,
+    readxl,
+    rlang,
+    tibble
+Suggests:
+    knitr,
+    rmarkdown,
+    rvest,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+Depends:
+    R (>= 4.1)

@@ -1,0 +1,221 @@
+---
+title: "bbsrgeo"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{bbsrgeo}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(bbsrgeo)
+library(dplyr)
+```
+
+## Hintergrund
+
+Seit der Deutschen Einheit gab es in Deutschland - insbesondere in Ostdeutschland -
+zahlreiche Gebietsreformen: Gemeinden wurden zusammengelegt, Kreise neu
+zugeschnitten. Fuer die Raumbeobachtung ist das ein Problem, denn eine
+Zeitreihe der Einwohnerzahl "des Kreises X" ist nur dann sinnvoll
+interpretierbar, wenn X ueber die Zeit dieselbe Flaeche bezeichnet. Aendert
+sich der Gebietszuschnitt, aendern sich die Werte allein dadurch - unabhaengig
+von der tatsaechlichen Entwicklung vor Ort.
+
+Das BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) veroeffentlicht
+dafuer **Umstiegsschluessel**: Tabellen, die fuer jede Gebietseinheit und
+jeden Jahresuebergang angeben, welcher Anteil ihrer Flaeche, Bevoelkerung
+bzw. (ab 1997) Beschaeftigten in welche Nachfolgeeinheit uebergegangen ist.
+`bbsrgeo` laedt diese Schluessel herunter, liest sie in ein einheitliches
+Format ein und rechnet damit Regionalstatistik-Zeitreihen auf einen
+konsistenten Gebietsstand um.
+
+## Umstiegsschluessel laden
+
+`bbsr_umstieg_verfuegbar()` listet, welche Tabellen das BBSR anbietet:
+
+```{r}
+bbsr_umstieg_verfuegbar("Kreise")
+```
+
+Im echten Einsatz laedt man die passende Datei mit `bbsr_umstieg_download()`
+herunter (das Ergebnis wird lokal gecacht) und liest sie mit
+`bbsr_umstieg_read()` ein:
+
+```{r, eval = FALSE}
+pfad <- bbsr_umstieg_download(ebene = "Kreise", art = "jaehrlich")
+umstieg <- bbsr_umstieg_read(pfad)
+```
+
+Fuer dieses Vignette bauen wir denselben Umstiegsschluessel stattdessen von
+Hand nach - er hat genau die Form, die `bbsr_umstieg_read()` zurueckgibt -
+damit das Beispiel ohne Internetzugriff nachvollziehbar bleibt.
+
+## Beispiel: drei fiktive Kreise mit einer Gebietsreform
+
+Wir nehmen drei **frei erfundene** Kreise an: "Nordkreis" und "Suedkreis"
+fusionieren zum 1.1.2021 vollstaendig zum neuen "Musterkreis"; "Bergkreis"
+bleibt unveraendert.
+
+Bis 2020 bleiben alle drei Kreise unveraendert (Anteil = 1 auf sich selbst);
+erst im Uebergang 2020 -> 2021 gehen Nordkreis und Suedkreis vollstaendig im
+neuen Musterkreis auf. Ein `"jaehrlich"`-Umstiegsschluessel enthaelt genau
+eine solche Zeilengruppe je Jahresuebergang - `regio_konsistent()` verkettet
+sie bei Bedarf automatisch (siehe Abschnitt
+["Verkettung"](#verkettung-und-umrechnung-auf-ein-festes-zieljahr) unten):
+
+```{r}
+umstieg <- tibble::tribble(
+  ~ags_alt,   ~name_alt,   ~ags_neu,   ~name_neu,     ~jahr_von, ~jahr_bis,
+  "99001000", "Nordkreis", "99001000", "Nordkreis",   2018L,     2019L,
+  "99002000", "Suedkreis", "99002000", "Suedkreis",   2018L,     2019L,
+  "99003000", "Bergkreis", "99003000", "Bergkreis",   2018L,     2019L,
+  "99001000", "Nordkreis", "99001000", "Nordkreis",   2019L,     2020L,
+  "99002000", "Suedkreis", "99002000", "Suedkreis",   2019L,     2020L,
+  "99003000", "Bergkreis", "99003000", "Bergkreis",   2019L,     2020L,
+  "99001000", "Nordkreis", "99009000", "Musterkreis", 2020L,     2021L,
+  "99002000", "Suedkreis", "99009000", "Musterkreis", 2020L,     2021L,
+  "99003000", "Bergkreis", "99003000", "Bergkreis",   2020L,     2021L,
+) |>
+  mutate(
+    anteil_flaeche = 1,       # bis 2020 unveraendert, danach gehen Nordkreis/
+    anteil_bevoelkerung = 1,  # Suedkreis jeweils VOLLSTAENDIG im Musterkreis
+    anteil_beschaeftigte = NA_real_,  # auf -> auch dort Anteil = 1 (siehe oben)
+    flaeche_alt = rep(c(550, 450, 300), 3),
+    bevoelkerung_alt = c(52000, 38000, 21000, 52300, 38200, 21050, 52600, 38500, 21100),
+    beschaeftigte_alt = NA_real_
+  )
+umstieg
+```
+
+Und ein synthetischer Regionalstatistik-Datensatz im langen Panelformat: die
+Einwohnerzahl (eine absolute Groesse) und eine Arbeitslosenquote (eine
+Verhaeltniszahl) je Kreis und Jahr, jeweils auf dem zum Zeitpunkt gueltigen
+Gebietsstand:
+
+```{r}
+regionaldaten <- tibble::tribble(
+  ~ags,       ~jahr, ~einwohner, ~alq,
+  "99001000", 2018L,      52000,  6.2,
+  "99001000", 2019L,      52300,  6.0,
+  "99001000", 2020L,      52600,  6.5,
+  "99002000", 2018L,      38000,  5.0,
+  "99002000", 2019L,      38200,  4.8,
+  "99002000", 2020L,      38500,  5.3,
+  "99003000", 2018L,      21000,  4.1,
+  "99003000", 2019L,      21050,  4.0,
+  "99003000", 2020L,      21100,  4.2,
+)
+regionaldaten
+```
+
+## Vor der Umrechnung pruefen
+
+`regio_pruefen()` zeigt, ob alle vorkommenden AGS im Umstiegsschluessel
+bekannt sind - so fallen Tippfehler oder Luecken auf, bevor sie in der
+Umrechnung stillschweigend zu Datenverlust fuehren:
+
+```{r}
+regio_pruefen(regionaldaten, umstieg, ags_spalte = "ags")
+```
+
+## Umrechnung auf einen konsistenten Gebietsstand
+
+### Absolute Werte: Einwohnerzahl
+
+Fuer absolute Groessen wie die Einwohnerzahl werden die Werte der
+Ausgangseinheiten gemaess ihrem Anteil aufsummiert (`typ = "absolut"`):
+
+```{r}
+einwohner_konsistent <- regio_konsistent(
+  regionaldaten,
+  umstiegsschluessel = umstieg,
+  ags_spalte = "ags",
+  jahr_spalte = "jahr",
+  wert_spalten = "einwohner",
+  typ = "absolut",
+  gewicht = "bevoelkerung",
+  ziel_gebietsstand = 2021L,
+  ebene = "Kreise"
+)
+einwohner_konsistent
+```
+
+Nordkreis und Suedkreis sind jetzt zum Musterkreis zusammengefasst (z. B.
+2020: 52600 + 38500 = 91100 Einwohner), Bergkreis bleibt unveraendert - alle
+drei Jahre liegen nun auf demselben Gebietsstand (2021) vor und sind damit
+vergleichbar.
+
+### Verhaeltniszahlen: Arbeitslosenquote
+
+Fuer eine Verhaeltniszahl wie die Arbeitslosenquote waere eine simple Summe
+falsch - hier bildet `typ = "verhaeltnis"` stattdessen den mit der
+gewaehlten Basis (hier: Bevoelkerung) gewichteten Mittelwert:
+
+```{r}
+alq_konsistent <- regio_konsistent(
+  regionaldaten,
+  umstiegsschluessel = umstieg,
+  ags_spalte = "ags",
+  jahr_spalte = "jahr",
+  wert_spalten = "alq",
+  typ = "verhaeltnis",
+  gewicht = "bevoelkerung",
+  ziel_gebietsstand = 2021L,
+  ebene = "Kreise"
+)
+alq_konsistent
+```
+
+### Wahl der Gewichtungsbasis
+
+`gewicht` bestimmt, mit welchem der drei vom BBSR bereitgestellten
+Anteilswerte gerechnet wird. Als Faustregel:
+
+* **`"bevoelkerung"`**: fuer sozioekonomische Absolutwerte und die meisten
+  Verhaeltniszahlen.
+* **`"flaeche"`**: fuer Flaechennutzungs-, Agrar- oder Umweltdaten.
+* **`"beschaeftigte"`**: fuer Wirtschaftsdaten (der Unterschied zur
+  bevoelkerungsproportionalen Umrechnung ist meist gering; nur ab 1997
+  verfuegbar).
+
+## Verkettung und Umrechnung auf ein festes Zieljahr
+
+Deckt der uebergebene Umstiegsschluessel mehrere aufeinanderfolgende
+Jahresuebergaenge ab (`art = "jaehrlich"` bei `bbsr_umstieg_download()`),
+verkettet `regio_konsistent()` die noetigen Einzeljahres-Schritte automatisch,
+um von einem beliebigen Ausgangsjahr zum gewuenschten `ziel_gebietsstand` zu
+gelangen. Alternativ liefert das BBSR fuer die Zieljahre 2019/2020/2021
+bereits vorverkettete `"umrechnung_*"`-Tabellen (`art = "umrechnung_2021"`
+usw.), die jedes historische Jahr direkt auf das Zieljahr abbilden - hier
+erfolgt die Umrechnung dann in einem einzigen Schritt.
+
+## Rueckrechnung (Disaggregation)
+
+Die Umstiegsschluessel des BBSR sind fuer die **Vorwaertsrechnung** (alter
+zu neuerem/aktuellem Gebietsstand) konzipiert. Eine Rueckrechnung - also die
+Verteilung von Werten des neuen Gebietsstands auf die kleinteiligeren alten
+Einheiten - ist grundsaetzlich fehleranfaelliger, da unterstellt werden muss,
+dass sich der Indikator innerhalb der neuen Einheit gleichmaessig gemaess
+Flaeche/Bevoelkerung/Beschaeftigten verteilt. `regio_konsistent()`
+unterstuetzt das als explizit zu aktivierende, experimentelle Option
+(`erlaube_rueckrechnung = TRUE`), die zudem eine Warnung ausgibt.
+
+## Hintergrund/Weiterfuehrende Literatur
+
+BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) (2010):
+*Gebietsreformen - politische Entscheidungen und Folgen fuer die Statistik.*
+BBSR-Berichte KOMPAKT 6/2010. Bonn. ISBN 978-3-87994-391-3, ISSN 1867-0547.
+<https://www.bbsr.bund.de/BBSR/DE/veroeffentlichungen/berichte-kompakt/2010/BK062010.html>
+
+Der Bericht dokumentiert die Gebietsreformen in Deutschland (insbesondere
+Ostdeutschland) seit 1990, erlaeutert die daraus entstehenden Gebietsbrueche
+in der Raumbeobachtung und beschreibt die Rechenverfahren, auf denen die
+BBSR-Umstiegsschluessel - und damit auch dieses Paket - methodisch beruhen.
