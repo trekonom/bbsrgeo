@@ -4,3 +4,5 @@
 ^data-raw$
 ^\.claude$
 
+^bbsrgeo\.Rproj$
+^\.Rproj\.user$
