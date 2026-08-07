@@ -206,6 +206,171 @@ evenly within the new unit according to area/population/employment.
 `harmonize_regions()` supports this as an explicitly-opt-in, experimental
 option (`allow_backcast = TRUE`), which also emits a warning.
 
+## Validation with INKAR
+
+So far the examples used a small, hand-built crosswalk. This section
+instead uses the real BBSR crosswalk together with the `example_population`
+dataset shipped with this package - real GENESIS-Regio population figures
+for every district in Germany, 1995-2024, on the respective historical
+boundary of each year - and checks the converted result against an
+**independent** source: **INKAR** ("Indikatoren und Karten zur Raum- und
+Stadtentwicklung"), a separate BBSR data product (not the
+Regionaldatenbank/GENESIS-Regio used elsewhere in this package) that
+already publishes many indicators, including total population, on a
+single consistent, current area boundary for every year back to 1995. Since
+INKAR arrives at its consistent boundary through its own, independently
+maintained pipeline, agreement between `harmonize_regions()`'s output and
+INKAR is a genuine external check on the conversion - not just a check
+against itself.
+
+The INKAR side of this comparison, `example_population_inkar`, ships with
+the package (see `?example_population_inkar`) - it was retrieved once via
+`inkaR::get_inkar_data("xbev", level = "KRE")` (indicator `"xbev"`
+"Bevoelkerung gesamt", found via `inkaR::search_indicators()` rather than
+guessed; see `data-raw/example_population_inkar.R`), so this validation
+works without reaching the INKAR API at test/vignette-build time:
+
+```{r}
+example_population_inkar
+```
+
+Converting `example_population` still needs the real BBSR crosswalk, which
+- consistent with the rest of this vignette - is not downloaded at build
+time:
+
+```{r, eval = FALSE}
+path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
+crosswalk <- bbsr_crosswalk_read(path)
+
+converted <- harmonize_regions(
+  example_population,
+  crosswalk = crosswalk,
+  ags_col = "ags",
+  year_col = "year",
+  value_cols = "population_total",
+  type = "absolute",
+  weight = "population",
+  target_year = "current",
+  level = "districts"
+)
+```
+
+The comparison itself is shown below with real, precomputed values -
+exactly what the code above returns when run live, joined against
+`example_population_inkar` above (note `example_population_inkar$ags` is
+INKAR's native 5-digit Kreisschluessel, not the 8-digit
+`ags_old`/`ags_new` convention `example_population` uses - see
+`?example_population_inkar`). See `tests/testthat/test-validate-inkar.R`
+for the executable version of this comparison - run automatically whenever
+the BBSR crosswalk is reachable, it checks *every* current German district,
+not just the two shown here:
+
+```{r}
+comparison <- tibble::tribble(
+  ~district,                     ~ags,       ~year, ~harmonize_regions, ~inkar_xbev,
+  "Saalekreis",                  "15088000", 2000L,             217487,      218739,
+  "Saalekreis",                  "15088000", 2020L,             183434,      183434,
+  "Mecklenburgische Seenplatte", "13071000", 2000L,             308936,      308936,
+  "Mecklenburgische Seenplatte", "13071000", 2020L,             258057,      258057,
+) |>
+  mutate(rel_diff_pct = round((harmonize_regions - inkar_xbev) / inkar_xbev * 100, 3))
+comparison
+```
+
+By 2020 - well after both the Sachsen-Anhalt (2007) and
+Mecklenburg-Vorpommern (2011) district reforms - `harmonize_regions()` and
+INKAR agree exactly, since both sources are simply reporting the same
+current-boundary district's population without any conversion. For 2000,
+however, converting Saalekreis onto the 2020 boundary requires actually
+applying the crosswalk (Saalekreis did not exist until 2007-07-01, it was
+formed from Saalkreis and the Landkreis Merseburg-Querfurt), and here
+`harmonize_regions()` and INKAR differ by about 0.6% - small, but not
+exactly zero. This is expected: BBSR's own weighted-share conversion
+(`weight = "population"`, see above) is not guaranteed to redistribute a
+historical district's population across its successor(s) in *exactly* the
+same way INKAR's internal pipeline does, even though both are based on the
+same underlying BBSR crosswalk logic. Aggregated to the state level, the
+totals for Sachsen-Anhalt and Mecklenburg-Vorpommern match exactly in every
+year 1995-2024, including 2000 - the ~0.6% difference is a matter of how
+the total is *split* across the two former districts, not a discrepancy in
+the total itself. This is exactly why
+`tests/testthat/test-validate-inkar.R` uses a tolerance (relative
+difference < 1%) rather than requiring exact equality.
+
+Checking all ~400 current districts (not just the two above) for 2000 and
+2015 confirms this pattern holds nationally: for 2015, every district
+matches to within 0.3%; for 2000, the bulk match almost exactly (median
+difference 0%) and every current district is present in both sources.
+
+Getting there required one genuine fix, not just a tolerance: GENESIS-Regio
+(the Regionaldatenbank behind `example_population`) stores a handful of
+districts under codes that do not match the official AGS the BBSR
+crosswalk expects. Aachen's pre-2009 city population, for example, is real
+data, but is only exposed under an RDB-internal 8-digit code
+(`"05334002"`), not the district-level `"05313"` the crosswalk expects - a
+plain 5-digit-code filter silently drops it, which alone produced a ~44%
+Aachen deviation during initial development of this dataset. `data-raw/example_population.R`
+now recodes this and three similar cases (Hannover's city/district split,
+Eisenach) to the AGS the crosswalk actually expects *before* filtering -
+see `recode_ags_quirks()` there, and the "Data quality note" in
+`?example_population` - fixing both this and a second, previously
+undetected bug (pre-1998 Eisenach data being silently dropped for an
+unrelated reason: the crosswalk only starts modeling Eisenach as its own
+entity one year after GENESIS-Regio's raw data already splits it out).
+
+After that fix, a small residual remains for 2000 - about 1% of districts,
+concentrated in Brandenburg (e.g. Potsdam, Potsdam-Mittelmark) - and it is
+*not* a bug: BBSR's own crosswalk records a small, real area correction
+(effective 2002/2003, transferring ~5.5% of Potsdam-Mittelmark's
+population to Potsdam) that INKAR's series evidently does not apply -
+`example_population`'s raw, unconverted values already match INKAR's
+almost exactly for these districts before 2003, and only diverge once
+`harmonize_regions()` faithfully carries that correction forward. This is
+the same class of legitimate BBSR-crosswalk-vs-INKAR methodology
+difference as the Saalekreis ~0.6% case above, just more visible here
+because the transferred share is smaller. `test-validate-inkar.R`
+reflects this: it requires *every* current district to be present, the
+median difference to stay near zero, and at least 98% of districts within
+the 1% tolerance - tight enough to catch a regression like the original
+Aachen bug, while still accommodating this kind of genuine, small,
+documented methodology difference.
+
+Separately, two districts in Rheinland-Pfalz (Mayen-Koblenz,
+Cochem-Zell) are excluded from the comparison entirely - their entries in
+BBSR's *own* published crosswalk file have a `share_population` of ~0.017
+instead of 1.0 for two unrelated, unchanged-boundary transitions in
+2014-2016, which `bbsr_crosswalk_read()` already flags via a warning (see
+`?bbsr_crosswalk_read`/the "Checking before conversion" section above)
+precisely because the area shares for that AGS/year don't sum to 1. This
+is a data-quality issue in BBSR's own crosswalk file, not in
+`example_population` or in `harmonize_regions()`.
+
+### The 2011 census break is a separate issue
+
+Both `example_population` and INKAR's `"xbev"` indicator report population
+following the same convention: figures from 2011 onward are based on the
+2011 census ("Zensus 2011"), which found the previously
+Fortschreibung-based population estimates for many German municipalities -
+particularly in eastern Germany - to be too high. This produced a
+one-time, methodological *level shift* in 2011 that has **nothing to do
+with area boundaries** and is **not** corrected by the BBSR area crosswalk
+or by `harmonize_regions()`.
+
+Because neither `example_population` nor INKAR's `"xbev"` apply any census
+correction, the validation above only checks that the **boundary**
+conversion is correct - it says nothing about, and cannot detect, the
+census break, since both sides of the comparison contain it identically.
+Concretely: do not interpret the population drop visible in
+`example_population`/`comparison` between 2010 and 2011 as a boundary
+effect of either district reform - by 2010/2011 both reforms (2007, 2011)
+have either already happened (Sachsen-Anhalt) or are about to (M-V's
+reform took effect 2011-09-04, so the 2011-12-31 Stichtag already reflects
+it) - the level shift is the census break. (INKAR does separately offer a
+census-corrected indicator, `"bev_korr"` - "Bevoelkerung (mit
+BBSR-Zensuskorrekturen)" - but reconciling *that* correction is a distinct
+problem from area-boundary harmonization and outside the scope of this
+package.)
+
 ## Background/Further reading
 
 BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) (2010):

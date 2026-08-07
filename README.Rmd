@@ -41,26 +41,46 @@ pak::pak("local::.")
 
 ```{r example}
 library(bbsrgeo)
+library(dplyr)
 
 # Which crosswalks does the BBSR offer for districts?
 bbsr_crosswalk_available("districts")
 ```
 
-```r
-# Download the crosswalk (cached locally) and read it
+`bbsrgeo` ships with a real example dataset, `example_population` - GENESIS-Regio
+population figures for every German district, 1995-2024, each on the area
+boundary that was actually valid at the time. Sachsen-Anhalt's Saalkreis and
+Landkreis Merseburg-Querfurt, for example, merged into the new Saalekreis on
+2007-07-01:
+
+```{r}
+example_population |>
+  filter(district_name %in% c("Saalkreis", "Merseburg-Querfurt, Kreis", "Saalekreis")) |>
+  filter(year %in% 2005:2008) |>
+  select(ags, district_name, year, population_total) |>
+  arrange(year, ags)
+```
+
+`harmonize_regions()` converts this onto a single, consistent boundary using
+the real BBSR crosswalk:
+
+```{r}
 path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
 crosswalk <- bbsr_crosswalk_read(path)
 
-# Convert regional data (AGS + year + value column) onto the 2024 boundary
 harmonize_regions(
-  regional_data,
+  example_population,
   crosswalk = crosswalk,
   ags_col = "ags",
   year_col = "year",
-  value_cols = "population",
+  value_cols = "population_total",
   type = "absolute",
   weight = "population",
-  target_year = 2024L,
+  target_year = "current",
   level = "districts"
-)
+) |>
+  filter(ags == "15088000", year %in% 2005:2008)
 ```
+
+Saalkreis and Merseburg-Querfurt's populations are now combined into
+Saalekreis for every year, comparable across the boundary reform.
