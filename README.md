@@ -52,14 +52,14 @@ bbsr_crosswalk_available("districts")
 #> 4 districts conversion_2021      1990    2020 https://www.bbsr.bund.d… 933 KB
 ```
 
-`bbsrgeo` ships with a real example dataset, `example_population` -
-GENESIS-Regio population figures for every German district, 1995-2024,
-each on the area boundary that was actually valid at the time.
-Sachsen-Anhalt’s Saalkreis and Landkreis Merseburg-Querfurt, for
-example, merged into the new Saalekreis on 2007-07-01:
+`bbsrgeo` ships with a real example dataset, `popregio` - GENESIS-Regio
+population figures for every German district, 1995-2024, each on the
+area boundary that was actually valid at the time. Sachsen-Anhalt’s
+Saalkreis and Landkreis Merseburg-Querfurt, for example, merged into the
+new Saalekreis on 2007-07-01:
 
 ``` r
-example_population |>
+popregio |>
   filter(district_name %in% c("Saalkreis", "Merseburg-Querfurt, Kreis", "Saalekreis")) |>
   filter(year %in% 2005:2008) |>
   select(ags, district_name, year, population_total) |>
@@ -88,7 +88,7 @@ crosswalk <- bbsr_crosswalk_read(path)
 #> minor boundary corrections) - please check the original file if in doubt.
 
 harmonize_regions(
-  example_population,
+  popregio,
   crosswalk = crosswalk,
   ags_col = "ags",
   year_col = "year",

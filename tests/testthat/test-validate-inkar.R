@@ -1,4 +1,4 @@
-test_that("harmonize_regions() output for example_population matches INKAR (independent source)", {
+test_that("harmonize_regions() output for popregio matches INKAR (independent source)", {
   skip_on_cran()
   skip_if_offline()
 
@@ -14,7 +14,7 @@ test_that("harmonize_regions() output for example_population matches INKAR (inde
   }
 
   converted <- harmonize_regions(
-    example_population,
+    popregio,
     crosswalk = crosswalk,
     ags_col = "ags",
     year_col = "year",
@@ -48,11 +48,11 @@ test_that("harmonize_regions() output for example_population matches INKAR (inde
     1, 5
   ))
 
-  # example_population_inkar is bundled with the package (see R/data.R,
-  # data-raw/example_population_inkar.R) - no INKAR API call needed here.
+  # popinkar is bundled with the package (see R/data.R,
+  # data-raw/popinkar.R) - no INKAR API call needed here.
   # Its `ags` is INKAR's native 5-digit Kreisschluessel, unlike
   # `converted$ags` (8-digit, Kreisschluessel + "000") - see
-  # ?example_population_inkar for why, and the join below for the pattern.
+  # ?popinkar for why, and the join below for the pattern.
 
   # Two representative years: 2000 (before most district reforms and
   # before the 2011 census break - requires chaining through several
@@ -63,8 +63,8 @@ test_that("harmonize_regions() output for example_population matches INKAR (inde
   # two years are informative and for the census-2011 caveat.
   for (check_year in c(2000L, 2015L)) {
     ours <- converted[converted$year == check_year, c("kreiskennziffer", "population_total")]
-    inkar_year <- example_population_inkar[
-      example_population_inkar$year == check_year,
+    inkar_year <- popinkar[
+      popinkar$year == check_year,
       c("ags", "population_total")
     ]
 
@@ -74,8 +74,8 @@ test_that("harmonize_regions() output for example_population matches INKAR (inde
       suffixes = c("_ours", "_inkar")
     )
 
-    # Every current district (example_population's AGS recoding, see
-    # data-raw/example_population.R, fixes the two cases - Aachen,
+    # Every current district (popregio's AGS recoding, see
+    # data-raw/popregio.R, fixes the two cases - Aachen,
     # Region Hannover - that used to leave real gaps here) is present in
     # both sources.
     expect_equal(
@@ -93,7 +93,7 @@ test_that("harmonize_regions() output for example_population matches INKAR (inde
     # (e.g. a 2002/2003 boundary correction transferring ~5.5% of
     # Potsdam-Mittelmark's area/population to Potsdam) that INKAR's own
     # series evidently does not apply (INKAR's raw, pre-2003 Potsdam
-    # values match example_population's raw, unconverted values almost
+    # values match popregio's raw, unconverted values almost
     # exactly - the divergence is introduced entirely by
     # harmonize_regions() faithfully following the BBSR crosswalk through
     # that correction). This is the same class of legitimate

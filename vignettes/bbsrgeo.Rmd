@@ -209,7 +209,7 @@ option (`allow_backcast = TRUE`), which also emits a warning.
 ## Validation with INKAR
 
 So far the examples used a small, hand-built crosswalk. This section
-instead uses the real BBSR crosswalk together with the `example_population`
+instead uses the real BBSR crosswalk together with the `popregio`
 dataset shipped with this package - real GENESIS-Regio population figures
 for every district in Germany, 1995-2024, on the respective historical
 boundary of each year - and checks the converted result against an
@@ -223,18 +223,18 @@ maintained pipeline, agreement between `harmonize_regions()`'s output and
 INKAR is a genuine external check on the conversion - not just a check
 against itself.
 
-The INKAR side of this comparison, `example_population_inkar`, ships with
-the package (see `?example_population_inkar`) - it was retrieved once via
+The INKAR side of this comparison, `popinkar`, ships with
+the package (see `?popinkar`) - it was retrieved once via
 `inkaR::get_inkar_data("xbev", level = "KRE")` (indicator `"xbev"`
 "Bevoelkerung gesamt", found via `inkaR::search_indicators()` rather than
-guessed; see `data-raw/example_population_inkar.R`), so this validation
+guessed; see `data-raw/popinkar.R`), so this validation
 works without reaching the INKAR API at test/vignette-build time:
 
 ```{r}
-example_population_inkar
+popinkar
 ```
 
-Converting `example_population` still needs the real BBSR crosswalk, which
+Converting `popregio` still needs the real BBSR crosswalk, which
 - consistent with the rest of this vignette - is not downloaded at build
 time:
 
@@ -243,7 +243,7 @@ path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
 crosswalk <- bbsr_crosswalk_read(path)
 
 converted <- harmonize_regions(
-  example_population,
+  popregio,
   crosswalk = crosswalk,
   ags_col = "ags",
   year_col = "year",
@@ -257,10 +257,10 @@ converted <- harmonize_regions(
 
 The comparison itself is shown below with real, precomputed values -
 exactly what the code above returns when run live, joined against
-`example_population_inkar` above (note `example_population_inkar$ags` is
+`popinkar` above (note `popinkar$ags` is
 INKAR's native 5-digit Kreisschluessel, not the 8-digit
-`ags_old`/`ags_new` convention `example_population` uses - see
-`?example_population_inkar`). See `tests/testthat/test-validate-inkar.R`
+`ags_old`/`ags_new` convention `popregio` uses - see
+`?popinkar`). See `tests/testthat/test-validate-inkar.R`
 for the executable version of this comparison - run automatically whenever
 the BBSR crosswalk is reachable, it checks *every* current German district,
 not just the two shown here:
@@ -303,17 +303,17 @@ matches to within 0.3%; for 2000, the bulk match almost exactly (median
 difference 0%) and every current district is present in both sources.
 
 Getting there required one genuine fix, not just a tolerance: GENESIS-Regio
-(the Regionaldatenbank behind `example_population`) stores a handful of
+(the Regionaldatenbank behind `popregio`) stores a handful of
 districts under codes that do not match the official AGS the BBSR
 crosswalk expects. Aachen's pre-2009 city population, for example, is real
 data, but is only exposed under an RDB-internal 8-digit code
 (`"05334002"`), not the district-level `"05313"` the crosswalk expects - a
 plain 5-digit-code filter silently drops it, which alone produced a ~44%
-Aachen deviation during initial development of this dataset. `data-raw/example_population.R`
+Aachen deviation during initial development of this dataset. `data-raw/popregio.R`
 now recodes this and three similar cases (Hannover's city/district split,
 Eisenach) to the AGS the crosswalk actually expects *before* filtering -
 see `recode_ags_quirks()` there, and the "Data quality note" in
-`?example_population` - fixing both this and a second, previously
+`?popregio` - fixing both this and a second, previously
 undetected bug (pre-1998 Eisenach data being silently dropped for an
 unrelated reason: the crosswalk only starts modeling Eisenach as its own
 entity one year after GENESIS-Regio's raw data already splits it out).
@@ -323,7 +323,7 @@ concentrated in Brandenburg (e.g. Potsdam, Potsdam-Mittelmark) - and it is
 *not* a bug: BBSR's own crosswalk records a small, real area correction
 (effective 2002/2003, transferring ~5.5% of Potsdam-Mittelmark's
 population to Potsdam) that INKAR's series evidently does not apply -
-`example_population`'s raw, unconverted values already match INKAR's
+`popregio`'s raw, unconverted values already match INKAR's
 almost exactly for these districts before 2003, and only diverge once
 `harmonize_regions()` faithfully carries that correction forward. This is
 the same class of legitimate BBSR-crosswalk-vs-INKAR methodology
@@ -343,11 +343,11 @@ instead of 1.0 for two unrelated, unchanged-boundary transitions in
 `?bbsr_crosswalk_read`/the "Checking before conversion" section above)
 precisely because the area shares for that AGS/year don't sum to 1. This
 is a data-quality issue in BBSR's own crosswalk file, not in
-`example_population` or in `harmonize_regions()`.
+`popregio` or in `harmonize_regions()`.
 
 ### The 2011 census break is a separate issue
 
-Both `example_population` and INKAR's `"xbev"` indicator report population
+Both `popregio` and INKAR's `"xbev"` indicator report population
 following the same convention: figures from 2011 onward are based on the
 2011 census ("Zensus 2011"), which found the previously
 Fortschreibung-based population estimates for many German municipalities -
@@ -356,12 +356,12 @@ one-time, methodological *level shift* in 2011 that has **nothing to do
 with area boundaries** and is **not** corrected by the BBSR area crosswalk
 or by `harmonize_regions()`.
 
-Because neither `example_population` nor INKAR's `"xbev"` apply any census
+Because neither `popregio` nor INKAR's `"xbev"` apply any census
 correction, the validation above only checks that the **boundary**
 conversion is correct - it says nothing about, and cannot detect, the
 census break, since both sides of the comparison contain it identically.
 Concretely: do not interpret the population drop visible in
-`example_population`/`comparison` between 2010 and 2011 as a boundary
+`popregio`/`comparison` between 2010 and 2011 as a boundary
 effect of either district reform - by 2010/2011 both reforms (2007, 2011)
 have either already happened (Sachsen-Anhalt) or are about to (M-V's
 reform took effect 2011-09-04, so the 2011-12-31 Stichtag already reflects

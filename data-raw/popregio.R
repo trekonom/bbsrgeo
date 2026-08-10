@@ -1,4 +1,4 @@
-## code to prepare `example_population` dataset goes here
+## code to prepare `popregio` dataset goes here
 ##
 ## Source: Regionaldatenbank Deutschland (GENESIS-Regio), table 12411-01-01-4
 ## "Bevoelkerung nach Geschlecht - Stichtag 31.12. - Kreise und kreisfreie
@@ -21,7 +21,7 @@
 ## directly comparable to earlier fortschreibung-based figures. This is a
 ## SEPARATE phenomenon from the boundary reforms above and is NOT corrected
 ## by the BBSR area crosswalk - see the "Validation with INKAR" vignette
-## section and the note in `?example_population`.
+## section and the note in `?popregio`.
 ##
 ## GENESIS-Regio requires a free account (https://www.regionalstatistik.de/).
 ## Credentials are never stored in this script or the repo: this script uses
@@ -121,7 +121,7 @@ districts_raw <- population_raw |>
 ## year's label, since recoding can otherwise leave two different labels
 ## (e.g. "Eisenach, krsfr. Stadt" vs. "Wartburgkreis") attached to the same
 ## code.
-example_population_long <- districts_raw |>
+popregio_long <- districts_raw |>
   transmute(
     ags = paste0(.data$"1_variable_attribute_code", "000"),
     district_name = .data$"1_variable_attribute_label",
@@ -133,11 +133,11 @@ example_population_long <- districts_raw |>
   ) |>
   filter(!is.na(.data$population))
 
-canonical_name_by_ags <- example_population_long |>
+canonical_name_by_ags <- popregio_long |>
   slice_max(.data$year, n = 1, by = "ags", with_ties = FALSE) |>
   select("ags", district_name_canonical = "district_name")
 
-example_population_raw <- example_population_long |>
+popregio_raw <- popregio_long |>
   select(-"district_name") |>
   left_join(canonical_name_by_ags, by = "ags") |>
   rename(district_name = "district_name_canonical") |>
@@ -194,7 +194,7 @@ state_by_ags_prefix <- c(
   "16" = "Thüringen"
 )
 
-example_population <- example_population_raw |>
+popregio <- popregio_raw |>
   filter(
     purrr::map2_lgl(
       .data$ags, .data$year,
@@ -208,4 +208,4 @@ example_population <- example_population_raw |>
   ) |>
   arrange(.data$state, .data$ags, .data$year)
 
-usethis::use_data(example_population, overwrite = TRUE)
+usethis::use_data(popregio, overwrite = TRUE)

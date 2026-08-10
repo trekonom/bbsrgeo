@@ -11,11 +11,11 @@ Description: Tools to download and read the area crosswalks
     Development), and to convert German regional statistics time series
     from the Regionaldatenbank Deutschland (GENESIS-Regio) onto a
     consistent set of area boundaries. Includes two example datasets,
-    'example_population' (derived from the Regionaldatenbank Deutschland)
-    and 'example_population_inkar' (derived from INKAR, an independent BBSR
+    'popregio' (derived from the Regionaldatenbank Deutschland)
+    and 'popinkar' (derived from INKAR, an independent BBSR
     data product, used to validate the conversion), both licensed under the
     'Datenlizenz Deutschland - Namensnennung - Version 2.0' ('dl-de/by-2-0');
-    see ?example_population and ?example_population_inkar for the required
+    see ?popregio and ?popinkar for the required
     attribution.
 License: MIT + file LICENSE
 Encoding: UTF-8
