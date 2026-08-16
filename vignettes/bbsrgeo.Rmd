@@ -371,6 +371,144 @@ BBSR-Zensuskorrekturen)" - but reconciling *that* correction is a distinct
 problem from area-boundary harmonization and outside the scope of this
 package.)
 
+## A ratio example: care needs per 100 inhabitants
+
+Every example so far converted `popregio`, an **absolute** quantity
+(`type = "absolute"`): population figures are summed across the shares
+that make up a target district. Not every regional indicator works this
+way - a rate such as an unemployment rate or, here, the share of the
+population in need of long-term care must instead be converted as a
+population-weighted *average* (`type = "ratio"`, see "Ratios: unemployment
+rate" above). This section repeats the INKAR validation above for a real
+ratio indicator: `ltcregio`/`ltcinkar`, "Pflegebeduerftige je 100
+Einwohner" (persons in need of long-term care per 100 inhabitants, INKAR
+indicator 280), 2009-2023.
+
+```{r}
+ltcinkar
+```
+
+`ltcregio` bundles the rate directly (`care_rate`), alongside the absolute
+count (`pflegebeduerftige`) and the `population_total` (from `popregio`)
+it was divided by - see `?ltcregio`:
+
+```{r}
+ltcregio
+```
+
+```{r, eval = FALSE}
+converted <- harmonize_regions(
+  ltcregio,
+  crosswalk = crosswalk,
+  ags_col = "ags",
+  year_col = "year",
+  value_cols = "care_rate",
+  type = "ratio",
+  weight = "population",
+  target_year = "current",
+  level = "districts"
+)
+```
+
+As before, the comparison below shows real, precomputed values - see
+`tests/testthat/test-validate-ltc.R` for the executable version, checking
+every current district for 2009 and 2013:
+
+```{r}
+comparison_ltc <- tibble::tribble(
+  ~district,                ~ags,      ~year, ~harmonize_regions, ~inkar_280,
+  "Vorpommern-Rügen",       "13073000", 2009L,               4.63,       4.63,
+  "Vorpommern-Rügen",       "13073000", 2013L,               5.66,       5.66,
+  "Rhein-Hunsrück-Kreis",   "07140000", 2009L,               3.23,       3.19,
+  "Rhein-Hunsrück-Kreis",   "07140000", 2013L,               3.51,       3.46,
+) |>
+  mutate(rel_diff_pct = round((harmonize_regions - inkar_280) / inkar_280 * 100, 3))
+comparison_ltc
+```
+
+Vorpommern-Rügen did not exist as its own AGS until the
+Mecklenburg-Vorpommern reform of 2011-09-04 - its 2009 row in `ltcregio` is
+therefore absent, and `harmonize_regions()` instead chains the 2009 rates
+of its predecessor districts (e.g. Landkreis Rügen) forward through the
+reform, weighted by each predecessor's population. The result matches
+INKAR almost exactly in both years, the same pattern seen for the
+population example above.
+
+Rhein-Hunsrück-Kreis shows a small, ~1.2-1.3% residual in both years -
+smaller than the 1% cutoff used elsewhere in this vignette's tolerance
+discussion, but worth explaining rather than tolerating: BBSR's own
+crosswalk records a real, correctly-summing 2013->2014 boundary correction
+transferring ~1.7% of neighboring Cochem-Zell's population to
+Rhein-Hunsrück-Kreis, which `harmonize_regions()` faithfully carries
+forward but which INKAR's own series evidently does not apply the same
+way - the same class of legitimate BBSR-crosswalk-vs-INKAR methodology
+difference as the Potsdam-Mittelmark case above, not a bug. Separately,
+Cochem-Zell and its other neighbor Mayen-Koblenz are excluded from
+`test-validate-ltc.R`'s comparison entirely, for the same
+already-flagged `share_population` data-quality reason (2014-2016, ~0.017
+instead of 1.0) discussed in "Validation with INKAR" above - it is the
+same two Rheinland-Pfalz districts and the same underlying crosswalk rows.
+
+### Converting the underlying counts instead
+
+`ltcregio` also bundles the two counts `care_rate` was built from:
+`pflegebeduerftige` (persons in need of long-term care) and
+`population_total`. When both are available, an alternative to converting
+the ratio directly is to convert each with `type = "absolute"` and divide
+afterward:
+
+```{r, eval = FALSE}
+converted_counts <- harmonize_regions(
+  ltcregio,
+  crosswalk = crosswalk,
+  ags_col = "ags",
+  year_col = "year",
+  value_cols = c("pflegebeduerftige", "population_total"),
+  type = "absolute",
+  weight = "population",
+  target_year = "current",
+  level = "districts"
+)
+converted_counts$care_rate <- converted_counts$pflegebeduerftige /
+  converted_counts$population_total * 100
+```
+
+```{r}
+comparison_ltc_methods <- tibble::tribble(
+  ~district,                ~year, ~ratio_conversion, ~counts_then_divide, ~inkar_280,
+  "Vorpommern-Rügen",       2009L,             4.6309,               4.6305,       4.63,
+  "Vorpommern-Rügen",       2013L,             5.6623,               5.6623,       5.66,
+  "Rhein-Hunsrück-Kreis",   2009L,             3.2272,               3.2340,       3.19,
+  "Rhein-Hunsrück-Kreis",   2013L,             3.5052,               3.5138,       3.46,
+) |>
+  mutate(
+    rel_diff_ratio_pct = round((ratio_conversion - inkar_280) / inkar_280 * 100, 3),
+    rel_diff_counts_pct = round((counts_then_divide - inkar_280) / inkar_280 * 100, 3)
+  )
+comparison_ltc_methods
+```
+
+The two methods land within noise of each other here: for
+Rhein-Hunsrück-Kreis they agree to the third decimal and share the same
+~1.2-1.3% residual against INKAR, neither resolving it; for
+Vorpommern-Rügen, unaffected by the Rhein-Hunsrück-Kreis-specific boundary
+correction, they agree even more closely. This is expected, not a
+coincidence: `type = "ratio"` weights by the crosswalk's own recorded
+`population_old`, while converting the counts separately weights
+`pflegebeduerftige` by `share_population` directly and divides by a
+separately-converted `population_total` - these two weighting bases happen
+to coincide almost exactly for this dataset, since the crosswalk's
+`population_old` and `ltcregio`'s own `population_total` are, in practice,
+nearly the same series.
+
+Converting the counts separately is nonetheless the more broadly robust
+technique *when the underlying counts are available*, since it does not
+depend on the crosswalk's own population figures agreeing with your
+dataset's - a coincidence, not a guarantee. `type = "ratio"` remains the
+right (and only) option when only the ratio itself is available, with no
+bundled numerator/denominator to convert separately - e.g. the
+unemployment-rate example in "Ratios: unemployment rate" above.
+
 ## Background/Further reading
 
 BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung) (2010):

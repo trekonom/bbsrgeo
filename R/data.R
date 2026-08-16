@@ -155,3 +155,141 @@
 #' @examples
 #' popinkar
 "popinkar"
+
+#' Example long-term care rate data for every German district, 2009-2023
+#'
+#' The share of the population in need of long-term care ("Pflegebeduerftige
+#' je 100 Einwohner"), by district ("Kreis")/district-free city
+#' ("kreisfreie Stadt"), at biennial reference dates 2009-2023, each on the
+#' area boundary that was actually valid at that reference date. Unlike
+#' [popregio], this is a **rate**, not an absolute quantity: `care_rate` =
+#' `pflegebeduerftige / population_total * 100`. This makes `ltcregio` the
+#' package's worked example for `harmonize_regions(type = "ratio", weight =
+#' "population")` - a ratio must be converted as a population-weighted
+#' average, not summed like an absolute quantity (see [harmonize_regions()]
+#' and `vignette("bbsrgeo")`). This period still spans a real boundary
+#' reform: Mecklenburg-Vorpommern's district reform of 2011-09-04 (12
+#' districts merged into 6).
+#'
+#' @section Rate, not absolute count:
+#' `pflegebeduerftige` (the absolute headline count of persons in need of
+#' long-term care) and `population_total` are both included alongside the
+#' derived `care_rate`, so the calculation is transparent and reproducible.
+#' `population_total` is taken directly from the already-bundled, already-
+#' cleaned [popregio] dataset (same `ags`/`year` convention) rather than
+#' re-derived from a second RDB source. Only `care_rate` is meant to be
+#' passed to [harmonize_regions()] (with `type = "ratio"`); converting
+#' `pflegebeduerftige` with `type = "absolute"` would also be valid in
+#' principle but is not what this example dataset is built to demonstrate.
+#'
+#' @section Data quality note:
+#' Unlike [popregio]'s source table, this dataset's source table does not
+#' backfill a post-reform AGS with a retrospective pre-reform
+#' recalculation (verified directly against the Mecklenburg-Vorpommern
+#' 2011-09-04 reform before building this dataset: pre-reform codes report
+#' real data through 2009 and the RDB not-applicable placeholder from 2011
+#' on, post-reform codes the reverse) - so no double-counting correction
+#' was needed here, unlike for `popregio` (see `data-raw/ltcregio.R`).
+#'
+#' One correction *was* needed: at retrieval time, GENESIS-Regio's
+#' district-level ("KREISE") row for Berlin was `"-"` for 2023-12-31 - not
+#' a genuine gap in the underlying statistic, but a publication lag
+#' specific to Berlin (Hamburg, the only other single-Kreis city-state,
+#' had a normal 2023 district-level row). The identical number was already
+#' published under the federal-state ("DLAND") tag for Berlin, and since
+#' Berlin has no Landkreise, its district and state extent are the same
+#' entity - `ltcregio`'s 2023 Berlin row is backfilled from that DLAND row
+#' rather than left missing (see `data-raw/ltcregio.R`).
+#'
+#' @format A tibble with columns:
+#' \describe{
+#'   \item{ags}{Amtlicher Gemeindeschluessel, zero-padded to 8 digits
+#'     (5-digit Kreisschluessel + `"000"`), on the historical boundary
+#'     valid in `year`. Matches the `ags_old`/`ags_new` format returned by
+#'     [bbsr_crosswalk_read()].}
+#'   \item{state}{Federal state ("Bundesland").}
+#'   \item{district_name}{Official district name as published by Destatis
+#'     (German, unmodified).}
+#'   \item{year}{Reference year (as of 31 December; biennial: 2009, 2011,
+#'     ..., 2023).}
+#'   \item{pflegebeduerftige}{Absolute number of persons in need of
+#'     long-term care (persons).}
+#'   \item{population_total}{Total population, taken from [popregio]
+#'     (persons).}
+#'   \item{care_rate}{`pflegebeduerftige / population_total * 100`
+#'     (persons in need of long-term care per 100 inhabitants).}
+#' }
+#'
+#' @source Statistische Aemter des Bundes und der Laender, Regionaldatenbank
+#'   Deutschland (GENESIS-Regio), table 22411-02-02-4 "Pflegebeduerftige
+#'   nach Leistungsart und Geschlecht - Stichtag - regionale Tiefe: Kreise
+#'   und krfr. Staedte - ab 2009" (statistic 22411 "Pflegestatistik"),
+#'   retrieved 2026-08-16 via the \pkg{restatis} package. See
+#'   `data-raw/ltcregio.R` for the full retrieval/cleaning code.
+#'
+#'   Licensed under the "Datenlizenz Deutschland - Namensnennung - Version
+#'   2.0" (dl-de/by-2-0),
+#'   <https://www.govdata.de/dl-de/by-2-0>, which permits redistribution
+#'   with attribution; the citation above constitutes that attribution.
+#'
+#' @seealso [ltcinkar], an independent reference series from
+#'   INKAR used to validate [harmonize_regions()]'s conversion of this
+#'   dataset (see `vignette("bbsrgeo")`). [popregio], the source of
+#'   `population_total`.
+#'
+#' @examples
+#' ltcregio
+"ltcregio"
+
+#' INKAR reference long-term care rate data for validating `harmonize_regions()`
+#'
+#' The share of the population in need of long-term care ("Pflegebeduerftige
+#' je 100 Einwohner"), by district, 2009-2023, from INKAR ("Indikatoren und
+#' Karten zur Raum- und Stadtentwicklung", <https://www.inkar.de/>) -
+#' indicator 280, a BBSR data product distinct from the Regionaldatenbank
+#' Deutschland (GENESIS-Regio) that [ltcregio] is sourced from. INKAR
+#' already reports every district's rate on a single, current area
+#' boundary for every year, which makes it a genuine **independent** check
+#' on [harmonize_regions()]'s `type = "ratio"` conversion of [ltcregio]
+#' onto a consistent boundary: both `tests/testthat/test-validate-ltc.R`
+#' and `vignette("bbsrgeo")` compare the two. Bundled with the package so
+#' this validation does not require reaching the INKAR API at
+#' test/vignette-build time.
+#'
+#' @section AGS convention differs from `ltcregio`:
+#' `ags` here is INKAR's native **5-digit** Kreisschluessel (e.g.
+#' `"13073"`), *not* the 8-digit `ags_old`/`ags_new` convention
+#' ([ltcregio], the BBSR crosswalks; Kreisschluessel + `"000"`).
+#' This is deliberate - `ltcinkar` is a comparison *target*
+#' for [harmonize_regions()] output, not an input to it - but the two must
+#' not be joined by `ags` directly without accounting for this, e.g.
+#' `substr(harmonized$ags, 1, 5) == ltcinkar$ags` (see
+#' `tests/testthat/test-validate-ltc.R` and the vignette for the exact
+#' pattern used; same convention as [popinkar]).
+#'
+#' @format A tibble with columns:
+#' \describe{
+#'   \item{ags}{INKAR's 5-digit Kreisschluessel (see above - not the same
+#'     convention as [ltcregio]'s `ags`).}
+#'   \item{district_name}{District name as published by INKAR (German).}
+#'   \item{year}{Reference year (biennial: 2009, 2011, ..., 2023).}
+#'   \item{care_rate}{Persons in need of long-term care per 100
+#'     inhabitants, indicator `280` ("Pflegebeduerftige je 100 Einwohner").}
+#' }
+#'
+#' @source INKAR, indicator `280` ("Pflegebeduerftige je 100 Einwohner"),
+#'   district level (`level = "KRE"`), retrieved 2026-08-16 via the
+#'   \pkg{inkaR} package (`inkaR::get_inkar_data("280", level = "KRE")`;
+#'   requires no credentials - the INKAR API is public). See
+#'   `data-raw/ltcinkar.R` for the full retrieval code.
+#'
+#'   Licensed under the "Datenlizenz Deutschland - Namensnennung - Version
+#'   2.0" (dl-de/by-2-0), <https://www.govdata.de/dl-de/by-2-0>, which
+#'   permits redistribution with attribution; the citation above
+#'   constitutes that attribution ("BBSR Bonn 2026").
+#'
+#' @seealso [ltcregio]
+#'
+#' @examples
+#' ltcinkar
+"ltcinkar"
