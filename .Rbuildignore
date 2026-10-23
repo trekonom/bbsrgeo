@@ -6,3 +6,5 @@
 
 ^bbsrgeo\.Rproj$
 ^\.Rproj\.user$
+^docs$
+^\.scratch$
