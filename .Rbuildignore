@@ -8,3 +8,5 @@
 ^\.Rproj\.user$
 ^docs$
 ^\.scratch$
+^dev$
+^CODING_STANDARDS\.md$

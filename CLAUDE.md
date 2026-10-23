@@ -14,15 +14,19 @@ Not yet on CRAN; install locally with `pak::pak("local::.")`.
 
 ## Commands
 
-Run these via `Rscript -e '...'` or an R console (`devtools`/`testthat`/`pkgdown`
-are not on `Suggests`, so prefer base tools already listed in `DESCRIPTION`).
+Write R code to a `.R` file and run it with `Rscript file.R`; the scripts below
+are in `dev/`. Scratch scripts go in `dev/scratch/` (gitignored). `devtools`/
+`testthat`/`pkgdown` are not on `Suggests`, so prefer base tools already listed
+in `DESCRIPTION`.
 
-- Run all tests: `Rscript -e 'testthat::test_local()'` (or `devtools::test()` if installed)
-- Run a single test file: `Rscript -e 'testthat::test_file("tests/testthat/test-harmonize-regions.R")'`
-- Regenerate docs from roxygen comments: `Rscript -e 'roxygen2::roxygenise()'`
+- Run all tests: `Rscript dev/test-all.R` (lists any test that skipped)
+- Run a single test file: `Rscript dev/test-file.R tests/testthat/test-harmonize-regions.R`
+  (a bare `testthat::test_file()` skips the network-guarded validation tests
+  silently, because it leaves `NOT_CRAN` unset)
+- Regenerate docs from roxygen comments: `Rscript dev/document.R`
 - Build the package: `R CMD build . --no-build-vignettes`
 - Full check: `NOT_CRAN=true R CMD check bbsrgeo_0.0.0.9000.tar.gz --no-manual --no-build-vignettes -o /tmp/rcheck`
-- Rebuild README from README.Rmd: `Rscript -e 'rmarkdown::render("README.Rmd")'`
+- Rebuild README from README.Rmd: `Rscript dev/render-readme.R`
 
 Tests use `testthat` edition 3 (`Config/testthat/edition: 3` in DESCRIPTION).
 Tests that hit the live BBSR site or require network access are guarded with
@@ -119,6 +123,7 @@ previously-debugged edge cases, not stylistic choices.
 
 ## Working with this repo
 
+- Reviewers: `CODING_STANDARDS.md` holds the judgement-call rules (read it during review).
 - All comments/docs in the package are in English; the BBSR *source* file
   names, sheet names, and scraped page content are in German by nature
   (e.g. "gemeinden"/"kreise", "Umrechnung auf ..." ) — code that parses them
