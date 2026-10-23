@@ -31,3 +31,24 @@ Fix: reproduce the gap with and without that transfer; then assert on an explici
 3. Replace the loose bounds (`median < 0.005`, `>= 98%` within 1%, `max < 0.05`) with assertions tied to the verified cause, e.g. compare against INKAR rates recomputed with `popinkar` population, or assert the population ratio for named districts.
 
 **Out of scope:** the `share_population` sum anomalies for Cochem-Zell / Mayen-Koblenz 2014-2016 (separate, already handled by the exclusion list; see issue 05).
+
+## Grilling outcome (supersedes the Agent Brief's "Required changes")
+
+Re-checked on harmonized output (all 8 years, 400 districts per year, `harmonize_regions()` ratio and counts-then-divide vs `ltcinkar`/`popinkar`). The brief's denominator explanation does not hold:
+
+- Raw `popregio` vs `popinkar` population differs in only 8 districts (Cochem-Zell, Rhein-Hunsrück, six Thuringian). These are boundary adjustments in INKAR, not a census revision (2021/2023 match exactly).
+- After harmonization the Thuringian gaps vanish (rate within 0.3%). Rhein-Hunsrück's harmonized population matches `popinkar` within 0.2%, yet its rate is still 1.2-1.4% off (2009, 2011, 2013). So the denominator is not the cause; rebuilding `ltcregio` with another denominator would not close it.
+- INKAR's indicator 280 methodology could not be found in primary sources (`.scratch/ltc-validation/research/inkar-280-methodology.md`). The idea that INKAR leaves the numerator unadjusted is unverified and must not be stated as fact.
+
+Decisions (user):
+1. `ltcregio` keeps the `popregio` `population_total` denominator. No rebuild.
+2. Test bounds: replace the median / 98%-within-1% / 5%-max assertions with one generic bound, max relative difference < 0.6%, for all districts outside the exclusions.
+3. Keep the existing share-sum-anomaly exclusion (07135, 07137). Name Rhein-Hunsrück (07140000), 2009-2013, as a known residual (about 1.3%) with the reason "unexplained; INKAR method undocumented", and no assertion about the mechanism.
+4. No ADR, no GLOSSARY.md.
+
+Required changes:
+1. Remove the "INKAR does not apply the Cochem-Zell transfer" explanation from `tests/testthat/test-validate-ltc.R`, `vignettes/bbsrgeo.Rmd` (shared with issue 01) and `?ltcregio` (`R/data.R`); replace it with the narrow, verified statement above.
+2. Implement decisions 2 and 3 in `test-validate-ltc.R`, covering all `ltcregio` years the test uses.
+3. Ask BBSR how indicator 280 is built (follow-up, not blocking).
+
+Observed, not part of this issue: ratio vs counts-then-divide differ by ~0.4% for Goettingen (03159) 2009/2011 and Vorpommern-Greifswald (13075) 2009 (relevant to issue 03); Mayen-Koblenz absolute counts collapse under `type = "absolute"` (issue 07).

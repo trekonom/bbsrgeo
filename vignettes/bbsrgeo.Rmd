@@ -414,7 +414,8 @@ As before, the comparison below uses a precomputed snapshot of what the code
 above returns when run live (stored to six decimals), joined against
 the bundled `ltcinkar` and with the relative difference computed from
 unrounded values. See `tests/testthat/test-validate-ltc.R` for the
-executable version, checking every current district for 2009, 2013 and 2023.
+executable version, checking every current district for all eight reference
+dates (2009-2023) against a maximum relative difference of 0.6%.
 
 ```{r}
 # Snapshot of harmonize_regions() output (unrounded); ratio_conversion is the
@@ -448,12 +449,17 @@ reform, weighted by each predecessor's population. The result matches
 INKAR almost exactly in both years, the same pattern seen for the
 population example above.
 
-Rhein-Hunsrück-Kreis shows a small residual of ~1.2-1.3% in both years -
-larger than the 1% mark used for the share-within-tolerance check in
-`test-validate-ltc.R`, so it counts among the districts outside that
-tolerance; its cause has not been established. Cochem-Zell and its
-other neighbor Mayen-Koblenz are excluded from `test-validate-ltc.R`'s
-comparison entirely, for the same
+Rhein-Hunsrück-Kreis shows a small residual of ~1.2-1.3% in both years
+(and in 2011, not shown). It is the only district above the 0.6% bound
+that is not explained by a known data problem, so `test-validate-ltc.R`
+leaves it out of that bound for 2009-2013 and instead checks that its
+residual stays between 1% and 2%. What is established: the gap is already
+present before any conversion, and after conversion the population agrees
+with INKAR's within 0.2%, so the denominator is not the cause. What is
+not: INKAR's description of indicator 280 was not available to us, so how
+it builds the numerator is unknown. Cochem-Zell and its other neighbor
+Mayen-Koblenz are excluded from `test-validate-ltc.R`'s comparison
+entirely, for the same
 already-flagged `share_population` data-quality reason (2014-2016, ~0.017
 instead of 1.0) discussed in "Validation with INKAR" above - it is the
 same two Rheinland-Pfalz districts and the same underlying crosswalk rows.
