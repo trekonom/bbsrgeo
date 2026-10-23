@@ -502,22 +502,31 @@ Rhein-Hunsrück-Kreis they agree to the second decimal (differences of
 about 0.01) and neither resolves the residual against INKAR - ~1.2-1.3% for
 the ratio conversion, ~1.4-1.6% for counts-then-divide; for
 Vorpommern-Rügen they agree more closely (within 0.0005 in 2009,
-identically in 2013). This is expected, not a
-coincidence: `type = "ratio"` weights by the crosswalk's own recorded
-`population_old`, while converting the counts separately weights
-`pflegebeduerftige` by `share_population` directly and divides by a
-separately-converted `population_total` - these two weighting bases happen
-to coincide almost exactly for this dataset, since the crosswalk's
-`population_old` and `ltcregio`'s own `population_total` are, in practice,
-nearly the same series.
+identically in 2013).
 
-Converting the counts separately is nonetheless the more broadly robust
-technique *when the underlying counts are available*, since it does not
-depend on the crosswalk's own population figures agreeing with your
-dataset's - a coincidence, not a guarantee. `type = "ratio"` remains the
-right (and only) option when only the ratio itself is available, with no
-bundled numerator/denominator to convert separately - e.g. the
-unemployment-rate example in "Ratios: unemployment rate" above.
+The two methods differ only in which population weights the merge:
+`type = "ratio"` weights by the crosswalk's own recorded `population_old`,
+while converting the counts separately weights `pflegebeduerftige` by
+`share_population` directly and divides by a separately-converted
+`population_total`. Across all 400 current districts the two results differ
+by more than 0.005 in only 1% of districts in 2009, 0.5% in 2011 and 2013,
+and none from 2015 on, and their median error against INKAR is the same in
+every year. Where they do differ, neither is consistently closer to INKAR
+(the counts version is no better for Rhein-Hunsrück-Kreis, but closer for
+Göttingen and two Mecklenburg-Vorpommern districts). The close agreement
+is consistent with the crosswalk's `population_old` (in thousands) and
+`ltcregio$population_total` being nearly the same series at the median for
+2009 and 2013-2021 (a few 2011 districts deviate by 5-8%); it is a property
+of this dataset, not something the package guarantees.
+
+Converting the counts separately is therefore a consistency argument, not a
+demonstrated accuracy gain: when numerator and denominator are both
+available, it keeps the weights for both on the same basis (your dataset's
+own population) rather than relying on the crosswalk's population figures
+matching yours. `type = "ratio"` remains the right (and only) option when
+only the ratio itself is available, with no bundled numerator/denominator
+to convert separately - e.g. the unemployment-rate example in "Ratios:
+unemployment rate" above.
 
 ## Background/Further reading
 

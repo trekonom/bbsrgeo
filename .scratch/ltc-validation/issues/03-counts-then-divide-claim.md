@@ -1,6 +1,6 @@
 # Unsupported claim that converting counts first is more robust
 
-Status: ready-for-agent
+Status: done
 Category: bug
 
 Found in review of commit b0e071a (vignette, "Converting the underlying counts instead").
