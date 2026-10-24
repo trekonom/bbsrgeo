@@ -4,11 +4,14 @@
 \alias{bbsr_crosswalk_read}
 \title{Read a BBSR area crosswalk}
 \usage{
-bbsr_crosswalk_read(path)
+bbsr_crosswalk_read(path, fix = TRUE)
 }
 \arguments{
 \item{path}{Path or vector of paths to local xlsx files (see
 \code{\link[=bbsr_crosswalk_download]{bbsr_crosswalk_download()}}).}
+
+\item{fix}{Apply the documented corrections of \code{\link[=bbsr_crosswalk_fix]{bbsr_crosswalk_fix()}}.
+Default \code{TRUE}; \code{FALSE} returns the files as published.}
 }
 \value{
 A tibble with columns \code{ags_old}, \code{name_old}, \code{ags_new},

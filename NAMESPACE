@@ -3,6 +3,7 @@
 export(bbsr_crosswalk_available)
 export(bbsr_crosswalk_available_live)
 export(bbsr_crosswalk_download)
+export(bbsr_crosswalk_fix)
 export(bbsr_crosswalk_read)
 export(check_regions)
 export(harmonize_regions)

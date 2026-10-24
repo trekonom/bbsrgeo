@@ -15,6 +15,8 @@
 #'
 #' @param path Path or vector of paths to local xlsx files (see
 #'   [bbsr_crosswalk_download()]).
+#' @param fix Apply the documented corrections of [bbsr_crosswalk_fix()].
+#'   Default `TRUE`; `FALSE` returns the files as published.
 #'
 #' @return A tibble with columns `ags_old`, `name_old`, `ags_new`,
 #'   `name_new`, `year_from`, `year_to`, `share_area`, `share_population`,
@@ -24,8 +26,11 @@
 #'   `employment_old` of the respective old unit (basis for a weighted
 #'   average when converting ratios, see [harmonize_regions()]).
 #' @export
-bbsr_crosswalk_read <- function(path) {
+bbsr_crosswalk_read <- function(path, fix = TRUE) {
   data <- purrr::map_dfr(path, bbsrgeo_read_file)
+  if (fix) {
+    data <- bbsr_crosswalk_fix(data)
+  }
   bbsrgeo_check_share_sums(data)
   data
 }

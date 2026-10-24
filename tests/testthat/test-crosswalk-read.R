@@ -195,12 +195,23 @@ test_that("the real BBSR files have no header rows among their data rows", {
     # Collect, do not suppress: some files warn about share deviations
     # (bbsrgeo_check_share_sums()), which are not header rows.
     warnings <- character()
+    messages <- character()
     d <- withCallingHandlers(
       bbsr_crosswalk_read(path),
       warning = function(w) {
         warnings <<- c(warnings, conditionMessage(w))
         invokeRestart("muffleWarning")
+      },
+      message = function(m) {
+        messages <<- c(messages, conditionMessage(m))
+        invokeRestart("muffleMessage")
       }
+    )
+    # Only the district file has a documented fix (bbsr_crosswalk_fix()).
+    expect_equal(
+      any(grepl("Documented fixes", messages)),
+      name == "districts",
+      label = name
     )
 
     expect_false(anyNA(d$ags_old), label = paste("ags_old in", name))
