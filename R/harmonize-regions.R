@@ -55,6 +55,8 @@
 #' @param type `"absolute"` or `"ratio"` (see Details).
 #' @param weight Weighting basis: `"population"`, `"area"`, or
 #'   `"employment"` (see the BBSR recommendations in `vignette("bbsrgeo")`).
+#'   `"employment"` is only available for transitions from 1997 onward; an
+#'   earlier conversion is an error.
 #' @param target_year Target year of the boundary (e.g. `2024L`) or
 #'   `"current"` for the most recent boundary available in the crosswalk.
 #' @param level `"districts"` or `"municipalities"`.
@@ -139,6 +141,13 @@ harmonize_regions_impl <- function(data, crosswalk, ags_col, year_col,
     ..year = as.integer(data[[year_col]])
   )
   base <- dplyr::bind_cols(base, data[value_cols])
+
+  if (weight == "employment") {
+    check_employment_available(
+      crosswalk, min(base$..year, target_year_resolved),
+      max(base$..year, target_year_resolved)
+    )
+  }
 
   crosswalk_forward <- crosswalk
   if (type == "absolute") {
@@ -299,6 +308,29 @@ harmonize_step <- function(group, step_crosswalk, value_cols, type, weight, forw
   }
 
   dplyr::rename(result, ..ags = "..ags_target")
+}
+
+# BBSR only offers employment as a weight basis from 1997 onward; the earlier
+# crosswalk rows have NA there. Fails early instead of returning NA/NaN values.
+check_employment_available <- function(crosswalk, from_year, to_year) {
+  needed <- crosswalk[crosswalk$year_from >= from_year & crosswalk$year_to <= to_year, , drop = FALSE]
+  if (!anyNA(needed$share_employment)) {
+    return(invisible())
+  }
+  usable <- crosswalk$year_from[!is.na(crosswalk$share_employment)]
+  hint <- if (length(usable) > 0) {
+    sprintf("is only available for transitions from %d onward", min(usable))
+  } else {
+    "is not available in this crosswalk"
+  }
+  rlang::abort(sprintf(
+    paste(
+      "weight = \"employment\" %s, but the conversion needs transitions",
+      "from %d to %d. Use weight = \"population\" or \"area\", or restrict",
+      "the data to later years."
+    ),
+    hint, from_year, to_year
+  ))
 }
 
 # Sums value * share over the old units feeding one new unit. A missing value

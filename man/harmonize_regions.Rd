@@ -59,7 +59,9 @@ convert.}
 \item{type}{\code{"absolute"} or \code{"ratio"} (see Details).}
 
 \item{weight}{Weighting basis: \code{"population"}, \code{"area"}, or
-\code{"employment"} (see the BBSR recommendations in \code{vignette("bbsrgeo")}).}
+\code{"employment"} (see the BBSR recommendations in \code{vignette("bbsrgeo")}).
+\code{"employment"} is only available for transitions from 1997 onward; an
+earlier conversion is an error.}
 
 \item{target_year}{Target year of the boundary (e.g. \code{2024L}) or
 \code{"current"} for the most recent boundary available in the crosswalk.}

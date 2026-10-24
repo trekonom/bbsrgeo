@@ -171,6 +171,36 @@ test_that("harmonize_regions returns NA, not NaN, for an all-missing ratio", {
   expect_identical(res$rate, NA_real_)
 })
 
+test_that("harmonize_regions errors for employment weights before 1997", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 1995L, 1996L),
+    crosswalk_row("01000001", "01000001", 1997L, 1998L, share_employment = 1, employment_old = 50)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 1995L, rate = 1)
+
+  expect_error(
+    harmonize_regions(
+      data, crosswalk, "ags", "year", "rate",
+      type = "ratio", weight = "employment", target_year = 1998L, level = "districts"
+    ),
+    "only available for transitions from 1997"
+  )
+})
+
+test_that("harmonize_regions accepts employment weights from 1997 onward", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 1995L, 1996L),
+    crosswalk_row("01000001", "01000001", 1997L, 1998L, share_employment = 1, employment_old = 50)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 1997L, rate = 2)
+
+  res <- harmonize_regions(
+    data, crosswalk, "ags", "year", "rate",
+    type = "ratio", weight = "employment", target_year = 1998L, level = "districts"
+  )
+  expect_equal(res$rate, 2)
+})
+
 test_that("harmonize_regions refuses backcasting without explicit permission", {
   crosswalk <- crosswalk_row("01000001", "01000099", 2020L, 2021L)
   data <- tibble::tibble(ags = "01000099", year = 2021L, population = 100)

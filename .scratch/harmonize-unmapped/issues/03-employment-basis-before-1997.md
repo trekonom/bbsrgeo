@@ -1,6 +1,6 @@
 # weight = "employment" with source years before 1997 fails silently
 
-Status: needs-triage
+Status: done
 Category: bug
 
 Found while grilling the domain model (GLOSSARY.md).
