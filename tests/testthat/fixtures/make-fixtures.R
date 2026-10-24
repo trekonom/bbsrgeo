@@ -212,9 +212,9 @@ writexl::write_xlsx(
 # --- File 4: municipal "annual" file with a second header row -----------
 # The municipal files up to the 2015-2016 sheet of ref-gemeinden-2010-2020.xlsx
 # have a two-row header: row 1 the title, row 2 the column labels
-# ("Kennziffer", "Name", ...), checked with readxl::excel_sheets() and
-# readxl::read_excel() on the downloaded files. Later sheets have the single
-# header row of the other fixtures. Layout: 8 columns.
+# ("Kennziffer", "Name", ...). Which sheets of the five downloaded files have
+# it is listed in .scratch/crosswalk-read-municipal/issues/04-*.md. Later
+# sheets have the single header row of the other fixtures. Layout: 8 columns.
 sheet_two_row_header <- rbind(
   c("Gemeinden, Stand 31.12.2000", rep(NA, 7)),
   c(

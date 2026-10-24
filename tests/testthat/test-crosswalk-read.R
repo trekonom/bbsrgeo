@@ -138,70 +138,75 @@ test_that("bbsr_crosswalk_read parses the municipal Regionalschluessel layout", 
 })
 
 test_that("bbsr_crosswalk_read drops the second header row of municipal sheets", {
+  # Fixture sheet names, see make-fixtures.R: "2000-2001" has two header rows
+  # (title, then "Kennziffer"/"Name" labels), "2016-2017" one.
+  two_row_year <- 2000
+  one_row_year <- 2016
   d <- bbsr_crosswalk_read(test_path(
     "fixtures",
     "ref-gemeinden-testfixture-kopfzeilen.xlsx"
   ))
 
-  # Sheet "2000-2001" has two header rows (title, then "Kennziffer"/"Name"
-  # labels), sheet "2016-2017" one: both read only their data rows.
   expect_false(anyNA(d$ags_old))
   expect_false(anyNA(d$ags_new))
   expect_equal(nrow(d), 3)
-  expect_equal(d$ags_old[d$year_from == 2000], c("01001000", "01002000"))
-  expect_equal(d$name_old[d$year_from == 2000][1], "Town A")
-  expect_equal(d$ags_old[d$year_from == 2016], "01001000")
+  # The first data row is the first municipality, not the label row.
+  expect_equal(d$ags_old[1], "01001000")
+  expect_equal(d$name_old[1], "Town A")
+  expect_equal(
+    d$ags_old[d$year_from == two_row_year],
+    c("01001000", "01002000")
+  )
+  expect_equal(d$ags_old[d$year_from == one_row_year], "01001000")
 })
 
-test_that("the real BBSR files have no header rows left among their data rows", {
+test_that("the real BBSR files have no header rows among their data rows", {
   skip_on_cran()
   skip_if_offline()
 
-  read_real <- function(level, kind, year_from) {
-    tryCatch(
-      {
-        path <- bbsr_crosswalk_download(
-          level = level,
-          kind = kind,
-          year_from = year_from
-        )
-        # Some files have known share deviations that warn, unrelated to
-        # header rows.
-        suppressWarnings(bbsr_crosswalk_read(path))
-      },
-      error = function(e) {
-        skip("Could not download/read the BBSR area crosswalk.")
+  # Row counts and warnings measured on the downloads of 2026-10-24. Before
+  # the fix the municipal files had 10, 10 and 6 more rows (the label row of
+  # each sheet with a second header row); the 2020-2024 and district files
+  # are unchanged. A changed upstream file will need these updated.
+  expected_rows <- c(
+    municipalities_1990 = 151093,
+    municipalities_2000 = 127337,
+    municipalities_2010 = 112275,
+    municipalities_2020 = 54949,
+    districts = 14908
+  )
+  files <- list(
+    municipalities_1990 = list("municipalities", 1990),
+    municipalities_2000 = list("municipalities", 2000),
+    municipalities_2010 = list("municipalities", 2010),
+    municipalities_2020 = list("municipalities", 2020),
+    districts = list("districts", NULL)
+  )
+
+  for (name in names(files)) {
+    path <- tryCatch(
+      bbsr_crosswalk_download(
+        level = files[[name]][[1]],
+        kind = "annual",
+        year_from = files[[name]][[2]]
+      ),
+      error = function(e) skip("Could not download the BBSR area crosswalk.")
+    )
+    # Collect, do not suppress: some files warn about share deviations
+    # (bbsrgeo_check_share_sums()), which are not header rows.
+    warnings <- character()
+    d <- withCallingHandlers(
+      bbsr_crosswalk_read(path),
+      warning = function(w) {
+        warnings <<- c(warnings, conditionMessage(w))
+        invokeRestart("muffleWarning")
       }
     )
-  }
-  # Municipal files 1990-2000, 2000-2010 and 2010-2020 have the second header
-  # row (10, 10 and 6 sheets); the 2020-2024 and district files have none.
-  for (year_from in c(1990, 2000, 2010, 2020)) {
-    d <- read_real("municipalities", "annual", year_from)
-    expect_false(anyNA(d$ags_old), label = paste("ags_old from", year_from))
-    expect_false(anyNA(d$ags_new), label = paste("ags_new from", year_from))
-  }
-  d <- read_real("districts", "annual", NULL)
-  expect_false(anyNA(d$ags_old))
-  expect_false(anyNA(d$ags_new))
-})
 
-test_that("reading the municipal 2000-2010 file raises no share-sum warning", {
-  skip_on_cran()
-  skip_if_offline()
-
-  path <- tryCatch(
-    bbsr_crosswalk_download(
-      level = "municipalities",
-      kind = "annual",
-      year_from = 2000
-    ),
-    error = function(e) {
-      skip("Could not download the BBSR area crosswalk.")
-    }
-  )
-  # Before the header-row fix the NA "Name" rows formed an ags_old = NA
-  # group with share sum 0 and 10 combinations warned; no other combination
-  # deviates in this file (measured on the download of 2026-10-24).
-  expect_no_warning(bbsr_crosswalk_read(path))
+    expect_false(anyNA(d$ags_old), label = paste("ags_old in", name))
+    expect_false(anyNA(d$ags_new), label = paste("ags_new in", name))
+    expect_equal(nrow(d), expected_rows[[name]], label = paste("rows in", name))
+    # The label rows formed an ags_old = NA group that warned.
+    expect_false(any(grepl("ags_old = 'NA'", warnings)), label = name)
+  }
 })

@@ -27,8 +27,10 @@ warns. The 1990-2000, 2010-2020 and district files still warn about
 non-NA share deviations (4, 1 and 4 combinations); those are not this issue.
 
 Tests: fixture `ref-gemeinden-testfixture-kopfzeilen.xlsx` (one sheet with and
-one without the second header row) and two network-guarded tests in
-`test-crosswalk-read.R`.
+one without the second header row) and one network-guarded test in
+`test-crosswalk-read.R` that reads each real file once and asserts no NA keys,
+the row counts above and no `ags_old = 'NA'` warning. The label is matched
+exactly, not case-insensitively: it is exactly "Kennziffer" on all 26 sheets.
 
 ## Comments
 
@@ -55,7 +57,7 @@ by dropping them.
 **Category:** bug
 **Summary:** `bbsr_crosswalk_read()` must not return the second header row of municipal sheets as a data row.
 
-**Current behavior:**
+**Current behavior (before the fix):**
 For municipal annual sheets that have a second header row (column labels such
 as "Kennziffer" / "Name" below the title row), the reader returns it as a
 crosswalk row with NA `ags_old` and `ags_new`, `name_old` = `name_new` =
@@ -77,11 +79,11 @@ Regionalschluessel layout and the district file keep reading as before.
   mechanism; drop the row explicitly before AGS values are normalized.
 
 **Acceptance criteria:**
-- [ ] For each of the five cached crosswalk files, the read result has no row with NA `ags_old` or NA `ags_new`.
-- [ ] Row counts drop by exactly 10, 10 and 6 for the 1990-2000, 2000-2010 and 2010-2020 files; the 2020-2024 and district results are unchanged.
-- [ ] Reading the 2000-2010 file no longer produces a share-sum warning mentioning `ags_old = 'NA'`.
-- [ ] A test covers one sheet with the second header row (e.g. 2000-2001) and one without (e.g. a 2016-2019 sheet of the 2010-2020 file), asserting the first data row is the first municipality (e.g. Flensburg, `01001000`, for 2000-2001).
-- [ ] Tests that need the network or cached files follow the existing `skip_on_cran()` / `skip_if_offline()` pattern.
+- [x] For each of the five cached crosswalk files, the read result has no row with NA `ags_old` or NA `ags_new`.
+- [x] Row counts drop by exactly 10, 10 and 6 for the 1990-2000, 2000-2010 and 2010-2020 files; the 2020-2024 and district results are unchanged.
+- [x] Reading the 2000-2010 file no longer produces a share-sum warning mentioning `ags_old = 'NA'`.
+- [x] A test covers one sheet with the second header row (e.g. 2000-2001) and one without (e.g. a 2016-2019 sheet of the 2010-2020 file), asserting the first data row is the first municipality (e.g. Flensburg, `01001000`, for 2000-2001).
+- [x] Tests that need the network or cached files follow the existing `skip_on_cran()` / `skip_if_offline()` pattern.
 
 **Out of scope:**
 - Changing the share-sum warning wording.

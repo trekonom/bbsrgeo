@@ -166,9 +166,11 @@ bbsrgeo_read_sheet <- function(path, sheet, meta) {
   # Row 1 is the header; its text tells the 10-column layouts apart.
   header <- unlist(raw[1, ], use.names = FALSE)
   raw <- raw[-1, ]
-  # Municipal sheets up to 2015-2016 of ref-gemeinden-2010-2020.xlsx have a
-  # second header row of column labels ("Kennziffer" = AGS, "Name"); later
-  # sheets do not. Drop it by content, before the AGS is normalized.
+  # Most municipal sheets (all of 1990-2000 and 2000-2010, those up to
+  # 2015-2016 of 2010-2020) have a second header row of column labels
+  # ("Kennziffer" = AGS, "Name"); the later sheets do not (municipal issue 04).
+  # Drop it by content, before the AGS is normalized. The label is exact in
+  # all 26 affected sheets.
   raw <- raw[is.na(raw[[1]]) | raw[[1]] != "Kennziffer", ]
   n <- ncol(raw)
 
