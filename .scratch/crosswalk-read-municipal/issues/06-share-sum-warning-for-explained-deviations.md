@@ -1,6 +1,6 @@
 # Share-sum warning still fires for deviations that harmonize_regions() already handles
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 Follow-up from municipal issues 04 and 05 and ltc-validation 07. After 04 the
@@ -106,3 +106,12 @@ Triage verification (cached files, 2026-10-24):
 - Recomputing shares from the absolute values (a separate decision: it reopens the rejection recorded in issue 05, where 25 of 27 split groups in the 2020-2024 file carry the unit's total, not the part, in the counts).
 - Correcting the BBSR data, including recoding the 2014 and 2015 district rows.
 - Changing how `harmonize_regions()` renormalizes.
+
+## Resolution
+
+Implemented in `bbsrgeo_check_share_sums()` (pattern-naming warning) and
+`share_sum_deviates()` (shared bound with `renormalize_forward_shares()`). The
+decision to renormalize sums within the tolerance by default, with a message,
+came afterwards (`renormalize` argument of `harmonize_regions()`); see
+`docs/adr/0001-use-crosswalk-shares-not-recomputed-from-counts.md`.
+
