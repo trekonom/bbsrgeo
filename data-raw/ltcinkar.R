@@ -49,4 +49,18 @@ ltcinkar <- ltcinkar[
 rownames(ltcinkar) <- NULL
 ltcinkar <- tibble::as_tibble(ltcinkar)
 
+## Fail loudly on a bad INKAR download. `ags` stays 5-digit on purpose (see
+## the header), so `normalize_ags()` (8-digit padding) does not apply.
+stopifnot(
+  nrow(ltcinkar) > 0,
+  is.character(ltcinkar$ags),
+  all(grepl("^[0-9]{5}$", ltcinkar$ags)),
+  is.numeric(ltcinkar$year),
+  !anyNA(ltcinkar$year),
+  all(ltcinkar$year == round(ltcinkar$year)),
+  is.numeric(ltcinkar$care_rate),
+  !anyNA(ltcinkar$care_rate)
+)
+ltcinkar$year <- as.integer(ltcinkar$year)
+
 usethis::use_data(ltcinkar, overwrite = TRUE)

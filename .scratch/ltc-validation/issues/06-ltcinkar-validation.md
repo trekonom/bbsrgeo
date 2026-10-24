@@ -1,6 +1,6 @@
 # data-raw/ltcinkar.R has no input validation
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 Found in review of commit b0e071a (`data-raw/ltcinkar.R`).
