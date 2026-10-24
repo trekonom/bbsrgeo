@@ -1,6 +1,6 @@
 # ltc test turns failures into skips; exclusion list too broad
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 Found in review of commit b0e071a (`tests/testthat/test-validate-ltc.R`).

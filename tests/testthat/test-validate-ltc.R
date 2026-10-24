@@ -1,22 +1,31 @@
+# Biennial reference dates of ltcregio (2009-2023). All chain through one or
+# more year-steps to the current (2024) boundary; 2009-2017 include the
+# Mecklenburg-Vorpommern 2011-09-04 reform and the 2013->2014 and
+# 2014->2016 transitions. 2023 specifically
+# guards the Berlin DLAND-level patch in data-raw/ltcregio.R (Berlin's
+# KREISE-level row was "-" for 2023-12-31 at retrieval time; see the "Data
+# quality note" in ?ltcregio) - without that patch it would fail the
+# district-count check below (399 instead of 400).
+ltc_check_years <- seq(2009L, 2023L, by = 2L)
+
 # Harmonized ltcregio vs ltcinkar, for every check year, one row per current
-# district. Skips (does not fail) when the BBSR crosswalk cannot be fetched.
+# district. Skips (does not fail) only when the BBSR crosswalk cannot be
+# downloaded.
 ltc_harmonized_vs_inkar <- function() {
   skip_on_cran()
   skip_if_offline()
 
-  crosswalk <- tryCatch(
-    {
-      path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
-      # Warns about the known share-sum anomalies handled below.
-      suppressWarnings(bbsr_crosswalk_read(path))
-    },
-    error = function(e) NULL
+  path <- tryCatch(
+    bbsr_crosswalk_download(level = "districts", kind = "annual"),
+    error = function(e) {
+      skip(
+        "Could not download the BBSR area crosswalk (offline or BBSR unreachable)."
+      )
+    }
   )
-  if (is.null(crosswalk)) {
-    skip(
-      "Could not download/read the BBSR area crosswalk (offline or BBSR unreachable)."
-    )
-  }
+  # Warns about the known share-sum anomalies handled below. A read error is
+  # a real regression and must fail, not skip.
+  crosswalk <- suppressWarnings(bbsr_crosswalk_read(path))
 
   converted <- harmonize_regions(
     ltcregio,
@@ -50,18 +59,22 @@ ltc_harmonized_vs_inkar <- function() {
   # for a self-mapping district): here it's AGS 07135000 "Cochem-Zell" and
   # 07137000 "Mayen-Koblenz" 2014->2015 and 2015->2016 (share_population
   # 0.983/0.017 instead of 1.0/0.0). Districts whose conversion chain
-  # passes through such a transition are excluded from the comparison.
+  # passes through such a transition are excluded from the comparison, per
+  # check year: only transitions with year_from >= check_year and
+  # year_to <= target year lie on that year's conversion path.
   share_sums <- stats::aggregate(
     share_population ~ ags_old + year_from + year_to,
     crosswalk,
     sum,
     na.rm = TRUE
   )
-  affected <- unique(substr(
-    share_sums$ags_old[abs(share_sums$share_population - 1) > 0.01],
-    1,
-    5
-  ))
+  bad <- share_sums[abs(share_sums$share_population - 1) > 0.01, ]
+  target_year <- max(crosswalk$year_to)
+  affected <- lapply(ltc_check_years, function(check_year) {
+    on_path <- bad$year_from >= check_year & bad$year_to <= target_year
+    unique(substr(bad$ags_old[on_path], 1, 5))
+  })
+  names(affected) <- ltc_check_years
 
   list(
     compared = compared,
@@ -69,15 +82,6 @@ ltc_harmonized_vs_inkar <- function() {
     affected = affected
   )
 }
-
-# Biennial reference dates of ltcregio (2009-2023). 2009-2017 chain through
-# several year-steps to the current (2024) boundary, including the
-# Mecklenburg-Vorpommern 2011-09-04 reform and the 2013->2014 and
-# 2014->2016 transitions; 2021 and 2023 need no chaining. 2023 specifically guards the Berlin DLAND-level patch in
-# data-raw/ltcregio.R (Berlin's KREISE-level row was "-" for 2023-12-31 at
-# retrieval time; see the "Data quality note" in ?ltcregio) - without that
-# patch it would fail the district-count check below (399 instead of 400).
-ltc_check_years <- seq(2009L, 2023L, by = 2L)
 
 # AGS 07140 Rhein-Hunsrueck-Kreis: harmonized population agrees with
 # popinkar within 0.2%, yet the rate is ~1.3% above INKAR's for 2009-2013.
@@ -100,12 +104,19 @@ test_that("harmonize_regions(type = 'ratio') output for ltcregio matches INKAR w
 
   known_residual <- res$compared$kreiskennziffer == ltc_known_residual_ags &
     res$compared$year %in% ltc_known_residual_years
-  compared <- res$compared[
-    !res$compared$kreiskennziffer %in% res$affected & !known_residual,
-  ]
+  affected <- vapply(
+    seq_len(nrow(res$compared)),
+    function(i) {
+      res$compared$kreiskennziffer[i] %in%
+        res$affected[[as.character(res$compared$year[i])]]
+    },
+    logical(1)
+  )
+  compared <- res$compared[!affected & !known_residual, ]
 
-  # Max relative difference observed outside the exclusions is 0.48%
-  # (Vorpommern-Greifswald 2009); the bound leaves room for INKAR's
+  # Max relative difference observed outside the per-year exclusions is
+  # 0.48% (Vorpommern-Greifswald 2009), re-measured with 2017-2023 now
+  # including Cochem-Zell and Mayen-Koblenz; the bound leaves room for INKAR's
   # rounding. A single district over this bound is a real regression, not
   # noise - there is no "98% within 1%" tolerance here.
   for (check_year in ltc_check_years) {
