@@ -55,7 +55,7 @@ The quantity the shares are measured in: population, area, or employment.
 _Avoid_: weight (alone), allocation key
 
 **Share deviation**:
-A transition where an old unit's shares do not sum to 1. A data-quality issue in the BBSR source file, not in the package.
+A transition where an old unit's shares do not sum to 1. Not introduced by the package; causes seen in the source files are rounding, a share of 1 on every row for units without population, and rows that look like errors in the BBSR file.
 _Avoid_: share error, bad shares
 
 **Unmapped unit**:
