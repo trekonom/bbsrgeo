@@ -46,6 +46,10 @@ A crosswalk converting every earlier boundary year directly to one fixed target 
 One step of a crosswalk from a source boundary year (`year_from`) to a destination boundary year (`year_to`).
 _Avoid_: change, step, reform
 
+**Transition group**:
+The rows of one old area unit in one transition (`ags_old`, `year_from`, `year_to`), whose shares and counts the checks and the renormalization compare.
+_Avoid_: group, bucket
+
 **Share**:
 The fraction of an old area unit's weight allocated to one new area unit; sums to 1 over the new units of one old unit and one transition.
 _Avoid_: proportion, weight, factor

@@ -1,6 +1,6 @@
 # One definition of the facts about a transition group
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 From the architecture review of 2026-10-24 (candidate 1) and its grilling.

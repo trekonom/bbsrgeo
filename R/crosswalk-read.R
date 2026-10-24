@@ -137,23 +137,14 @@ bbsrgeo_check_count_shares <- function(data) {
       share = data[[share_col]],
       count = data[[count_col]]
     )
-    key <- paste(d$ags_old, d$year_from, d$year_to)
-    group_sum <- function(x) stats::ave(x, key, FUN = sum)
-    group_n <- stats::ave(d$share, key, FUN = length)
-    total <- group_sum(d$count)
-    varies <- stats::ave(d$count, key, FUN = function(v) {
-      !anyNA(v) &&
-        diff(range(v)) > COUNT_DIFFERENCE_TOLERANCE * max(abs(v))
-    }) ==
-      1
-    non_negative <- stats::ave(d$count, key, FUN = function(v) {
-      all(v >= 0)
-    }) ==
-      1
-    share_sum <- group_sum(d$share)
+    facts <- transition_group_facts(data, basis)
+    group_n <- facts$n_rows
+    total <- facts$count_total
+    share_sum <- facts$share_sum
     eligible <- group_n > 1 &
-      varies &
-      non_negative &
+      facts$counts_observed &
+      facts$counts_differ &
+      facts$counts_non_negative &
       !is.na(total) &
       total > 0 &
       !is.na(share_sum) &
@@ -165,9 +156,10 @@ bbsrgeo_check_count_shares <- function(data) {
       next
     }
     d$deviation <- abs(d$count / total - d$share)
-    d$largest <- stats::ave(d$deviation, key, FUN = function(v) {
-      max(v, na.rm = TRUE)
-    })
+    d <- dplyr::ungroup(dplyr::mutate(
+      dplyr::group_by(d, .data$ags_old, .data$year_from, .data$year_to),
+      largest = max(.data$deviation, na.rm = TRUE)
+    ))
     groups <- unique(d[
       disagree,
       c("ags_old", "year_from", "year_to", "largest")
@@ -221,29 +213,28 @@ bbsrgeo_check_count_shares <- function(data) {
 #' @return `data`, unchanged, invisibly.
 #' @noRd
 bbsrgeo_check_share_sums <- function(data) {
-  count_cols <- intersect(
-    c("area_old", "population_old", "employment_old"),
-    names(data)
+  facts <- lapply(
+    c(area = "area", population = "population", employment = "employment"),
+    function(basis) transition_group_facts(data, basis)
   )
-  differs <- function(v) {
-    !anyNA(v) && diff(range(v)) > COUNT_DIFFERENCE_TOLERANCE * max(abs(v))
-  }
+  rows <- data.frame(
+    ags_old = data$ags_old,
+    year_from = data$year_from,
+    year_to = data$year_to,
+    n_rows = facts$area$n_rows,
+    area_sum = facts$area$share_sum,
+    all_one = abs(data$share_area - 1) <= SHARE_SUM_TOLERANCE,
+    counts_differ = facts$area$counts_differ |
+      facts$population$counts_differ |
+      facts$employment$counts_differ
+  )
   summary <- dplyr::summarise(
-    dplyr::group_by(data, .data$ags_old, .data$year_from, .data$year_to),
-    n_rows = dplyr::n(),
-    area_sum = sum(.data$share_area, na.rm = TRUE),
-    all_one = all(abs(.data$share_area - 1) <= SHARE_SUM_TOLERANCE),
-    dplyr::across(
-      dplyr::all_of(count_cols),
-      differs,
-      .names = "differs_{.col}"
-    ),
+    dplyr::group_by(rows, .data$ags_old, .data$year_from, .data$year_to),
+    n_rows = dplyr::first(.data$n_rows),
+    area_sum = dplyr::first(.data$area_sum),
+    all_one = all(.data$all_one),
+    counts_differ = dplyr::first(.data$counts_differ),
     .groups = "drop"
-  )
-  summary$counts_differ <- Reduce(
-    `|`,
-    summary[paste0("differs_", count_cols)],
-    FALSE
   )
   off <- summary[share_sum_deviates(summary$area_sum), , drop = FALSE]
   if (nrow(off) == 0) {

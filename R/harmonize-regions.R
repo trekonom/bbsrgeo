@@ -529,11 +529,9 @@ renormalize_forward_shares <- function(
   to_year,
   renormalize = TRUE
 ) {
-  group_key <- paste(crosswalk$ags_old, crosswalk$year_from, crosswalk$year_to)
-  group_sum <- function(x) {
-    stats::ave(x, group_key, FUN = function(v) sum(v, na.rm = TRUE))
-  }
-  sums <- group_sum(crosswalk[[share_col]])
+  basis_name <- sub("^share_", "", share_col)
+  facts <- transition_group_facts(crosswalk, basis_name)
+  sums <- facts$share_sum
   off_any <- !is.na(sums) & sums > 0 & abs(sums - 1) > SHARE_SUM_FLOAT_SLACK
   if (!any(off_any)) {
     return(crosswalk)
@@ -554,24 +552,15 @@ renormalize_forward_shares <- function(
   off <- off_any & share_sum_deviates(sums)
   within_tolerance <- off_any & !off
 
-  basis_col <- paste0(sub("^share_", "", share_col), "_old")
+  basis_col <- paste0(basis_name, "_old")
   if (basis_col %in% names(crosswalk)) {
     # A missing basis (NA) is neither zero nor a part: only observed values count.
     basis <- crosswalk[[basis_col]]
-    basis_sums <- group_sum(basis)
-    all_observed <- group_sum(as.numeric(is.na(basis))) == 0
-    # Equal counts cannot be told from the unit's total repeated on every row,
-    # so they are not read as parts (case 3); neither are rounding-noise
-    # differences.
-    varies <- stats::ave(basis, group_key, FUN = function(v) {
-      diff(range(v)) > COUNT_DIFFERENCE_TOLERANCE * max(abs(v))
-    }) ==
-      1
-    non_negative <- stats::ave(basis, group_key, FUN = function(v) {
-      all(v >= 0)
-    }) ==
-      1
-    area_sums <- group_sum(crosswalk$share_area)
+    basis_sums <- facts$count_total
+    all_observed <- facts$counts_observed
+    varies <- facts$counts_differ
+    non_negative <- facts$counts_non_negative
+    area_sums <- transition_group_facts(crosswalk, "area")$share_sum
 
     zero_basis <- off &
       all_observed &
