@@ -1,5 +1,28 @@
 #!/usr/bin/env bash
 # Refuse the push when the test suite fails, skips, or warns (about a minute,
-# needs network for the validation tests). Bypass once with: git push --no-verify
+# needs network for the validation tests). A push that only changes Markdown
+# files and .scratch/ skips the suite and runs dev/check-refs.R instead.
+# Bypass once with: git push --no-verify
 # Enabled by: git config core.hooksPath .githooks
-cd "$(git rev-parse --show-toplevel)" && exec Rscript dev/test-all.R
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+zero=0000000000000000000000000000000000000000
+docs_only=true
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a ref
+  if [ "$remote_sha" = "$zero" ] || ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+    docs_only=false # new branch or unknown remote state: no range to inspect
+    break
+  fi
+  if git diff --name-only "$remote_sha" "$local_sha" |
+    grep -qvE '(^\.scratch/|\.md$)'; then
+    docs_only=false
+    break
+  fi
+done
+
+if [ "$docs_only" = true ]; then
+  echo "pre-push: only Markdown/.scratch files changed; skipping the test suite." >&2
+  exec Rscript dev/check-refs.R
+fi
+exec Rscript dev/test-all.R

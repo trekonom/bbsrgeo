@@ -19,7 +19,7 @@ are in `dev/`. Scratch scripts go in `dev/scratch/` (gitignored, not formatted; 
 `testthat`/`pkgdown` are not on `Suggests`, so prefer base tools already listed
 in `DESCRIPTION`.
 
-- Format code: `dev/format.sh` (finds `air` even when it is not on the `PATH`; `--check` only reports). The pre-commit hook in `.githooks/` runs the check and `dev/check-refs.R` (fails when a doc names a file or function that no longer exists) and the pre-push hook runs the full test suite (about a minute); after a fresh clone enable both with `git config core.hooksPath .githooks`
+- Format code: `dev/format.sh` (finds `air` even when it is not on the `PATH`; `--check` only reports). The pre-commit hook in `.githooks/` runs the check and `dev/check-refs.R` (fails when a doc names a file or function that no longer exists) and the pre-push hook runs the full test suite (about a minute; a push that only changes Markdown or `.scratch/` runs `dev/check-refs.R` instead); after a fresh clone enable both with `git config core.hooksPath .githooks`
 - Run all tests: `Rscript dev/test-all.R` (lists any test that skipped)
 - Run a single test file: `Rscript dev/test-file.R tests/testthat/test-harmonize-regions.R`
   (a bare `testthat::test_file()` skips the network-guarded validation tests
