@@ -164,7 +164,14 @@ bbsrgeo_check_count_shares <- function(data) {
     if (!any(disagree)) {
       next
     }
-    groups <- unique(d[disagree, c("ags_old", "year_from", "year_to")])
+    d$deviation <- abs(d$count / total - d$share)
+    d$largest <- stats::ave(d$deviation, key, FUN = function(v) {
+      max(v, na.rm = TRUE)
+    })
+    groups <- unique(d[
+      disagree,
+      c("ags_old", "year_from", "year_to", "largest")
+    ])
     groups <- groups[order(groups$ags_old, groups$year_from), , drop = FALSE]
     shown <- utils::head(groups, 5)
     lines <- c(
@@ -175,9 +182,10 @@ bbsrgeo_check_count_shares <- function(data) {
         nrow(groups),
         paste(
           sprintf(
-            "ags_old = '%s', year_from = %d",
+            "ags_old = '%s', year_from = %d, largest deviation %.4f",
             shown$ags_old,
-            shown$year_from
+            shown$year_from,
+            shown$largest
           ),
           collapse = "; "
         )

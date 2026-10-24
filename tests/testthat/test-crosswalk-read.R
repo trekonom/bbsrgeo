@@ -431,7 +431,7 @@ test_that("shares that disagree with their counts are reported with an example",
   d <- count_rows("01001000", c(0.5, 0.5), c(25, 75))
   expect_message(
     bbsrgeo_check_count_shares(d),
-    "area: 1 group.*ags_old = '01001000', year_from = 2000.*as given"
+    "area: 1 group.*ags_old = '01001000', year_from = 2000, largest deviation 0.2500.*as given"
   )
 })
 
@@ -475,6 +475,9 @@ test_that("the real files: the unfixed district row disagrees with its counts", 
     )
     out[grepl("disagree with their counts", out)]
   }
-  expect_match(count_messages(fix = FALSE), "07235000.*year_from = 2011")
+  # Exactly this group, for area and population (unfixed sums 1.009 / 1.007).
+  unfixed <- count_messages(fix = FALSE)
+  expect_match(unfixed, "area: 1 group.*07235000.*year_from = 2011")
+  expect_match(unfixed, "population: 1 group.*07235000.*year_from = 2011")
   expect_length(count_messages(), 0)
 })
