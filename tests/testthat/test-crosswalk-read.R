@@ -311,3 +311,89 @@ test_that("each pattern present is counted and exemplified once", {
   expect_match(w, "07135000")
   expect_match(w, "01001000")
 })
+
+# Constructed rows for bbsrgeo_check_names(): one row per element of `name_old`
+# (and `name_new`), all in one transition.
+name_rows <- function(
+  ags_old,
+  name_old,
+  ags_new = "01001001",
+  name_new = "Neu"
+) {
+  tibble::tibble(
+    ags_old = ags_old,
+    name_old = name_old,
+    ags_new = ags_new,
+    name_new = name_new,
+    year_from = 2011L,
+    year_to = 2012L
+  )
+}
+
+test_that("consistent names do not warn", {
+  d <- name_rows(c("01001000", "01001000"), c("Alt", "Alt"))
+  expect_no_warning(bbsrgeo_check_names(d))
+})
+
+test_that("two names under one ags_old are reported with codes, transition and names", {
+  d <- name_rows(
+    c("07235000", "07235000"),
+    c("Bernkastel-Wittlich", "Trier-Saarburg")
+  )
+  expect_warning(
+    bbsrgeo_check_names(d),
+    "1 ags_old.*07235000.*2011 -> 2012.*Bernkastel-Wittlich.*Trier-Saarburg"
+  )
+})
+
+test_that("two names under one ags_new are reported", {
+  d <- name_rows(
+    c("01001000", "01002000"),
+    c("A", "B"),
+    ags_new = c("01001001", "01001001"),
+    name_new = c("Neu", "Anders")
+  )
+  expect_warning(
+    bbsrgeo_check_names(d),
+    "1 ags_new.*01001001.*2011 -> 2012.*Neu.*Anders"
+  )
+})
+
+test_that("missing names are ignored", {
+  d <- name_rows(c("01001000", "01001000", "01001000"), c("Alt", NA, "Alt"))
+  expect_no_warning(bbsrgeo_check_names(d))
+  d <- name_rows(c("01001000", "01001000"), c(NA_character_, NA_character_))
+  expect_no_warning(bbsrgeo_check_names(d))
+})
+
+test_that("a crosswalk without name columns does not error", {
+  d <- name_rows("01001000", "Alt")[c(
+    "ags_old",
+    "ags_new",
+    "year_from",
+    "year_to"
+  )]
+  expect_no_error(bbsrgeo_check_names(d))
+})
+
+test_that("the real files: only the unfixed district row has inconsistent names", {
+  skip_on_cran()
+  skip_if_offline()
+  path <- tryCatch(
+    bbsr_crosswalk_download(level = "districts", kind = "annual"),
+    error = function(e) skip("Could not download the BBSR area crosswalk.")
+  )
+  name_warnings <- function(...) {
+    out <- character()
+    withCallingHandlers(
+      suppressMessages(bbsr_crosswalk_read(path, ...)),
+      warning = function(w) {
+        out <<- c(out, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    out[grepl("name", out)]
+  }
+  expect_match(name_warnings(fix = FALSE), "07235000.*2011 -> 2012")
+  expect_length(name_warnings(), 0)
+})

@@ -1,6 +1,6 @@
 # Report ags_old groups whose name_old is not constant
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 Raised while triaging shares-from-counts issue 02: the miscoded row
@@ -84,3 +84,11 @@ A row whose `ags_old` does not belong to its `name_old` (07235000 with `name_old
 - Comparing names across transitions (a unit can be legitimately renamed).
 - Checking shares against counts (shares-from-counts issue 02).
 
+
+## Resolution
+
+`bbsrgeo_check_names()` in `R/crosswalk-read.R`, called by
+`bbsr_crosswalk_read()` after `bbsr_crosswalk_fix()` and before
+`bbsrgeo_check_share_sums()`. With `fix = FALSE` the district file warns about
+07235000 (2011 -> 2012); with the default fix, and for the municipal files, no
+name warning (the real-file tests in `test-crosswalk-read.R`).
