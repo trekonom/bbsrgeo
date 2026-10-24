@@ -53,9 +53,9 @@ bbsr_crosswalk_fix <- function(crosswalk) {
   lines <- character()
   for (i in seq_len(nrow(fixes))) {
     fix <- fixes[i, ]
-    # Relevant where the crosswalk has the fix's transition and both codes: the
-    # crosswalk has no level column, and municipal files share the transitions
-    # of the district file.
+    # Relevant where the crosswalk has the fix's transition and both codes (also
+    # for a crosswalk without a level column): municipal files share the
+    # transitions of the district file.
     relevant <- crosswalk$year_from == fix$year_from &
       crosswalk$year_to == fix$year_to &
       crosswalk$ags_old == fix$ags_old &

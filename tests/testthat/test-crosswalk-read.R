@@ -13,6 +13,7 @@ test_that("bbsr_crosswalk_read parses an 'annual' file correctly", {
       "name_new",
       "year_from",
       "year_to",
+      "level",
       "share_area",
       "share_population",
       "share_employment",
@@ -22,6 +23,7 @@ test_that("bbsr_crosswalk_read parses an 'annual' file correctly", {
     )
   )
   expect_equal(nrow(d), 6)
+  expect_true(all(d$level == "districts"))
 
   # Sheet "1999-2000": hyphenated sheet name -> year_from/year_to taken directly from it
   unchanged <- d[d$year_from == 1999 & d$ags_old == "01000001", ]
@@ -117,6 +119,7 @@ test_that("bbsr_crosswalk_read parses the municipal Regionalschluessel layout", 
   )))
 
   expect_equal(nrow(d), 4)
+  expect_true(all(d$level == "municipalities"))
   # The 12-digit Regionalschluessel columns are not read as AGS, and the
   # 10 columns are not mistaken for the employment layout.
   expect_equal(

@@ -25,8 +25,7 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
     value_cols = "population_total",
     type = "absolute",
     weight = "population",
-    target_year = "current",
-    level = "districts"
+    target_year = "current"
   ))
   converted$kreiskennziffer <- substr(converted$ags, 1, 5)
   n_current_districts <- length(unique(converted$kreiskennziffer))

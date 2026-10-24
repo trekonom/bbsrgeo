@@ -76,8 +76,7 @@ harmonize_regions(
   value_cols = "population_total",
   type = "absolute",
   weight = "population",
-  target_year = "current",
-  level = "districts"
+  target_year = "current"
 ) |>
   filter(ags == "15088000", year %in% 2005:2008)
 ```

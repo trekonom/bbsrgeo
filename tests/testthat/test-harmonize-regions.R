@@ -48,8 +48,7 @@ test_that("harmonize_regions aggregates absolute values on a full merger", {
     "population",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   )
 
   c_value <- res$population[res$ags == "01000099"]
@@ -78,8 +77,7 @@ test_that("harmonize_regions computes the weighted average for ratios", {
     "rate",
     type = "ratio",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   )
 
   expected <- (5 * 1000 + 8 * 2000) / 3000
@@ -122,8 +120,7 @@ test_that("harmonize_regions distributes correctly to multiple target units on a
     "population",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   )
 
   expect_equal(res$population[res$ags == "01000002"], 500 + 1000 * 0.3)
@@ -146,8 +143,7 @@ test_that("harmonize_regions chains annual crosswalks across multiple years", {
     "population",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   )
 
   expect_equal(res$ags, "01000009")
@@ -168,8 +164,7 @@ test_that("harmonize_regions uses a direct conversion crosswalk without chaining
     "population",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   )
   expect_equal(res$ags, "01000009")
   expect_equal(res$population, 100)
@@ -188,8 +183,7 @@ test_that("harmonize_regions aborts on a missing hop in the chain", {
       "population",
       type = "absolute",
       weight = "population",
-      target_year = 2021L,
-      level = "districts"
+      target_year = 2021L
     ),
     "No crosswalk found"
   )
@@ -211,8 +205,7 @@ test_that("harmonize_regions names the fixed target year of a conversion crosswa
       "population",
       type = "absolute",
       weight = "population",
-      target_year = 2015L,
-      level = "districts"
+      target_year = 2015L
     ),
     "target_year must be 2021"
   )
@@ -239,8 +232,7 @@ test_that("harmonize_regions keeps missing inputs missing for absolute values", 
     "population",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   )
 
   expect_true(is.na(res$population[res$ags == "01000099"]))
@@ -266,8 +258,7 @@ test_that("harmonize_regions returns NA, not NaN, for an all-missing ratio", {
     "rate",
     type = "ratio",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   )
 
   expect_identical(res$rate, NA_real_)
@@ -296,8 +287,7 @@ test_that("harmonize_regions errors for employment weights before 1997", {
       "rate",
       type = "ratio",
       weight = "employment",
-      target_year = 1998L,
-      level = "districts"
+      target_year = 1998L
     ),
     "only available for transitions from 1997"
   )
@@ -325,8 +315,7 @@ test_that("harmonize_regions accepts employment weights from 1997 onward", {
     "rate",
     type = "ratio",
     weight = "employment",
-    target_year = 1998L,
-    level = "districts"
+    target_year = 1998L
   )
   expect_equal(res$rate, 2)
 })
@@ -344,8 +333,7 @@ test_that("harmonize_regions refuses backcasting without explicit permission", {
       "population",
       type = "absolute",
       weight = "population",
-      target_year = 2020L,
-      level = "districts"
+      target_year = 2020L
     ),
     "backcast"
   )
@@ -365,7 +353,6 @@ test_that("harmonize_regions performs backcasting with a warning when explicitly
       type = "absolute",
       weight = "population",
       target_year = 2020L,
-      level = "districts",
       allow_backcast = TRUE
     ),
     "experimental"
@@ -395,7 +382,6 @@ test_that("a backcast over several years warns once", {
       type = "absolute",
       weight = "population",
       target_year = 2020L,
-      level = "districts",
       allow_backcast = TRUE
     ),
     warning = function(w) {
@@ -418,37 +404,58 @@ test_that("target_year = 'current' uses the most recent available boundary", {
     "population",
     type = "absolute",
     weight = "population",
-    target_year = "current",
-    level = "districts"
+    target_year = "current"
   )
   expect_equal(res$boundary_year, 2021L)
 })
 
-test_that("harmonize_regions_districts and harmonize_regions_municipalities return identical results", {
-  crosswalk <- crosswalk_row("01000001", "01000001", 2020L, 2021L)
+test_that("a crosswalk that mixes levels is an error", {
+  crosswalk <- dplyr::bind_rows(
+    dplyr::mutate(
+      crosswalk_row("01000001", "01000001", 2020L, 2021L),
+      level = "districts"
+    ),
+    dplyr::mutate(
+      crosswalk_row("01001001", "01001001", 2020L, 2021L),
+      level = "municipalities"
+    )
+  )
   data <- tibble::tibble(ags = "01000001", year = 2020L, population = 100)
 
-  a <- harmonize_regions_districts(
-    data,
-    crosswalk,
-    "ags",
-    "year",
-    "population",
-    type = "absolute",
-    weight = "population",
-    target_year = 2021L
+  expect_error(
+    harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      target_year = 2021L
+    ),
+    "mixes levels \\(districts, municipalities\\)"
   )
-  b <- harmonize_regions_municipalities(
-    data,
-    crosswalk,
-    "ags",
-    "year",
-    "population",
-    type = "absolute",
-    weight = "population",
-    target_year = 2021L
+  expect_error(
+    check_regions(data, crosswalk, "ags", "year", 2021L),
+    "mixes levels"
   )
-  expect_equal(a, b)
+})
+
+test_that("a crosswalk of one level converts, with or without a level column", {
+  plain <- crosswalk_row("01000001", "01000009", 2020L, 2021L)
+  data <- tibble::tibble(ags = "01000001", year = 2020L, population = 100)
+  convert <- function(crosswalk) {
+    harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      target_year = 2021L
+    )
+  }
+  expect_equal(
+    convert(dplyr::mutate(plain, level = "municipalities")),
+    convert(plain)
+  )
 })
 
 # Issue 07: BBSR's annual districts crosswalk has self-mapping rows whose
@@ -483,8 +490,7 @@ test_that("absolute conversion renormalizes off-1 shares of a self-mapping AGS a
     "population",
     type = "absolute",
     weight = "population",
-    target_year = 2022L,
-    level = "districts"
+    target_year = 2022L
   ))
   expect_equal(res$population, 1000)
 })
@@ -504,8 +510,7 @@ test_that("absolute conversion distributes the full count proportionally when sp
     "population",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$population[res$ags == "01000002"], 600)
   expect_equal(res$population[res$ags == "01000003"], 300)
@@ -534,8 +539,7 @@ test_that("shares within tolerance of 1 are rescaled to sum to 1 and do not warn
         "population",
         type = "absolute",
         weight = "population",
-        target_year = 2021L,
-        level = "districts"
+        target_year = 2021L
       )
     ),
     "deviate slightly from 1"
@@ -579,8 +583,7 @@ test_that("renormalization warns once, naming the affected AGS, the transition a
       "population",
       type = "absolute",
       weight = "population",
-      target_year = 2022L,
-      level = "districts"
+      target_year = 2022L
     ),
     warning = function(w) {
       warnings[[length(warnings) + 1L]] <<- conditionMessage(w)
@@ -632,8 +635,7 @@ test_that("a zero-population source unit is split by area share without a warnin
     "value",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 25)
   expect_equal(res$value[res$ags == "01000003"], 75)
@@ -660,8 +662,7 @@ test_that("zero-population units are not named in the warning for other off-1 sh
       "value",
       type = "absolute",
       weight = "population",
-      target_year = 2021L,
-      level = "districts"
+      target_year = 2021L
     ),
     warning = function(w) {
       warnings <<- c(warnings, conditionMessage(w))
@@ -706,8 +707,7 @@ test_that("a zero-area unit under weight = 'area' is still renormalized with a w
     "value",
     type = "absolute",
     weight = "area",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 50)
   expect_equal(res$value[res$ags == "01000003"], 50)
@@ -744,8 +744,7 @@ test_that("a zero-employment source unit is split by area share under weight = '
     "value",
     type = "absolute",
     weight = "employment",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 25)
   expect_equal(res$value[res$ags == "01000003"], 75)
@@ -784,8 +783,7 @@ test_that("off-1 shares are replaced by count shares when the counts are the par
     "value",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 30)
   expect_equal(res$value[res$ags == "01000003"], 70)
@@ -821,8 +819,7 @@ test_that("off-1 shares are renormalized, with a warning, when the count is the 
     "value",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 50)
   expect_equal(res$value[res$ags == "01000003"], 50)
@@ -857,8 +854,7 @@ test_that("count shares also apply under weight = 'area'", {
     "value",
     type = "absolute",
     weight = "area",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 25)
   expect_equal(res$value[res$ags == "01000003"], 75)
@@ -894,8 +890,7 @@ test_that("equal counts are not read as parts: they may be the unit's total repe
     "value",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 50)
   expect_equal(res$value[res$ags == "01000003"], 50)
@@ -931,8 +926,7 @@ test_that("a partly missing population count is not read as parts", {
     "value",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 50)
   expect_equal(res$value[res$ags == "01000003"], 50)
@@ -952,8 +946,7 @@ test_that("a missing population count is not treated as zero population", {
     "value",
     type = "absolute",
     weight = "population",
-    target_year = 2021L,
-    level = "districts"
+    target_year = 2021L
   ))
   expect_equal(res$value[res$ags == "01000002"], 50)
   expect_equal(res$value[res$ags == "01000003"], 50)
@@ -987,8 +980,7 @@ test_that("type = 'ratio' ignores off-1 shares and does not warn about them", {
       "rate",
       type = "ratio",
       weight = "population",
-      target_year = 2022L,
-      level = "districts"
+      target_year = 2022L
     )
   )
   expect_equal(res$rate, 4.2)
@@ -1014,8 +1006,7 @@ test_that("harmonize_regions drops and warns about an unmapped AGS in the target
       "ags",
       "year",
       "population",
-      target_year = 2021L,
-      level = "districts"
+      target_year = 2021L
     )
   )
   expect_length(warnings, 2)
@@ -1040,8 +1031,7 @@ test_that("harmonize_regions passes mapped target-year rows through unchanged", 
       "ags",
       "year",
       "population",
-      target_year = 2021L,
-      level = "districts"
+      target_year = 2021L
     )
   )
   expect_equal(res$population, 42)
@@ -1058,8 +1048,7 @@ test_that("harmonize_regions leaves target-year rows alone when no transition le
       "ags",
       "year",
       "population",
-      target_year = 2020L,
-      level = "districts"
+      target_year = 2020L
     )
   )
   expect_equal(res$ags, "01000009")
@@ -1086,8 +1075,7 @@ test_that("a share sum within the tolerance is renormalized, with a message and 
       "year",
       "population",
       type = "absolute",
-      target_year = 2021L,
-      level = "districts"
+      target_year = 2021L
     )),
     "01000001 \\(2020 -> 2021, sum 0.9900\\)"
   )
@@ -1111,7 +1099,6 @@ test_that("renormalize = FALSE uses the shares as given and reports the deviatio
       "population",
       type = "absolute",
       target_year = 2021L,
-      level = "districts",
       renormalize = FALSE
     )),
     "used as given.*01000001 \\(2020 -> 2021, sum 0.9000\\)"

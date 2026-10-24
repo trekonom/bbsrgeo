@@ -63,8 +63,9 @@
 #' explicitly with `allow_backcast = TRUE`.
 #'
 #' @param data Dataset in long panel format (see Details).
-#' @param crosswalk A crosswalk read with [bbsr_crosswalk_read()], matching
-#'   `level`.
+#' @param crosswalk A crosswalk read with [bbsr_crosswalk_read()]. Its `level`
+#'   (districts or municipalities) is the level of `data`; a crosswalk that mixes
+#'   levels is an error.
 #' @param ags_col Name of the AGS column in `data`.
 #' @param year_col Name of the year column in `data`.
 #' @param value_cols Character vector with the names of the value columns to
@@ -76,7 +77,6 @@
 #'   earlier conversion is an error.
 #' @param target_year Target year of the boundary (e.g. `2024L`) or
 #'   `"current"` for the most recent boundary available in the crosswalk.
-#' @param level `"districts"` or `"municipalities"`.
 #' @param allow_backcast Explicitly allow backcasting (disaggregation onto
 #'   an older boundary). Default `FALSE`.
 #' @param renormalize With `type = "absolute"`, rescale the crosswalk's shares
@@ -97,120 +97,17 @@ harmonize_regions <- function(
   type = c("absolute", "ratio"),
   weight = c("population", "area", "employment"),
   target_year,
-  level = c("districts", "municipalities"),
   allow_backcast = FALSE,
   renormalize = TRUE
 ) {
   type <- match.arg(type)
   weight <- match.arg(weight)
-  level <- match.arg(level)
-
-  if (level == "districts") {
-    harmonize_regions_districts(
-      data,
-      crosswalk,
-      ags_col,
-      year_col,
-      value_cols,
-      type,
-      weight,
-      target_year,
-      allow_backcast,
-      renormalize
-    )
-  } else {
-    harmonize_regions_municipalities(
-      data,
-      crosswalk,
-      ags_col,
-      year_col,
-      value_cols,
-      type,
-      weight,
-      target_year,
-      allow_backcast,
-      renormalize
-    )
-  }
-}
-
-#' @rdname harmonize_regions
-#' @export
-harmonize_regions_districts <- function(
-  data,
-  crosswalk,
-  ags_col,
-  year_col,
-  value_cols,
-  type = c("absolute", "ratio"),
-  weight = c("population", "area", "employment"),
-  target_year,
-  allow_backcast = FALSE,
-  renormalize = TRUE
-) {
-  type <- match.arg(type)
-  weight <- match.arg(weight)
-  harmonize_regions_impl(
-    data,
-    crosswalk,
-    ags_col,
-    year_col,
-    value_cols,
-    type,
-    weight,
-    target_year,
-    allow_backcast,
-    renormalize
-  )
-}
-
-#' @rdname harmonize_regions
-#' @export
-harmonize_regions_municipalities <- function(
-  data,
-  crosswalk,
-  ags_col,
-  year_col,
-  value_cols,
-  type = c("absolute", "ratio"),
-  weight = c("population", "area", "employment"),
-  target_year,
-  allow_backcast = FALSE,
-  renormalize = TRUE
-) {
-  type <- match.arg(type)
-  weight <- match.arg(weight)
-  harmonize_regions_impl(
-    data,
-    crosswalk,
-    ags_col,
-    year_col,
-    value_cols,
-    type,
-    weight,
-    target_year,
-    allow_backcast,
-    renormalize
-  )
-}
-
-harmonize_regions_impl <- function(
-  data,
-  crosswalk,
-  ags_col,
-  year_col,
-  value_cols,
-  type,
-  weight,
-  target_year,
-  allow_backcast,
-  renormalize
-) {
   stopifnot(
     ags_col %in% names(data),
     year_col %in% names(data),
     all(value_cols %in% names(data))
   )
+  check_single_level(crosswalk)
 
   target_year_resolved <- resolve_target_year(target_year, crosswalk)
 

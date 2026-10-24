@@ -19,7 +19,8 @@
 #'   Default `TRUE`; `FALSE` returns the files as published.
 #'
 #' @return A tibble with columns `ags_old`, `name_old`, `ags_new`,
-#'   `name_new`, `year_from`, `year_to`, `share_area`, `share_population`,
+#'   `name_new`, `year_from`, `year_to`, `level` (`"districts"` or
+#'   `"municipalities"`, from the file name), `share_area`, `share_population`,
 #'   `share_employment` (`NA` before 1997, since the BBSR only offers
 #'   employment data as a weighting basis from 1997 onward), and the
 #'   corresponding absolute values `area_old`, `population_old`, and
@@ -217,6 +218,7 @@ bbsrgeo_read_sheet <- function(path, sheet, meta) {
     name_new = trimws(raw$name_new),
     year_from = years$from,
     year_to = years$to,
+    level = meta$level,
     share_area = as.numeric(raw$share_area),
     share_population = as.numeric(raw$share_population),
     share_employment = as.numeric(raw$share_employment),

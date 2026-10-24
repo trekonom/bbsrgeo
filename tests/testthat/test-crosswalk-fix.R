@@ -115,8 +115,7 @@ test_that("harmonize_regions() passes 0.86 % of 07231000 on to 07235000 after th
     "year",
     "population",
     type = "absolute",
-    target_year = 2012L,
-    level = "districts"
+    target_year = 2012L
   )
   expect_equal(res$population[res$ags == "07235000"], 20000 + 10000 * 0.00935)
   expect_equal(res$population[res$ags == "07231000"], 10000 * 0.99065)
@@ -129,8 +128,7 @@ test_that("harmonize_regions() passes 0.86 % of 07231000 on to 07235000 after th
     "year",
     "population",
     type = "absolute",
-    target_year = 2012L,
-    level = "districts"
+    target_year = 2012L
   ) |>
     suppressMessages()
   expect_equal(unfixed$population[unfixed$ags == "07231000"], 10000)

@@ -35,8 +35,7 @@ ltc_harmonized_vs_inkar <- function() {
     value_cols = "care_rate",
     type = "ratio",
     weight = "population",
-    target_year = "current",
-    level = "districts"
+    target_year = "current"
   )
   converted$kreiskennziffer <- substr(converted$ags, 1, 5)
 

@@ -124,8 +124,7 @@ test_that("check_regions reports exactly the rows harmonize_regions drops", {
       "ags",
       "year",
       "population",
-      target_year = 2022L,
-      level = "districts"
+      target_year = 2022L
     )
   )
   # Every data row the check does not report converts to a unit of the target

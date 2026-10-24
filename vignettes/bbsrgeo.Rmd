@@ -149,8 +149,7 @@ population_consistent <- harmonize_regions(
   value_cols = "population",
   type = "absolute",
   weight = "population",
-  target_year = 2021L,
-  level = "districts"
+  target_year = 2021L
 )
 population_consistent
 ```
@@ -174,8 +173,7 @@ rate_consistent <- harmonize_regions(
   value_cols = "unemployment_rate",
   type = "ratio",
   weight = "population",
-  target_year = 2021L,
-  level = "districts"
+  target_year = 2021L
 )
 rate_consistent
 ```
@@ -256,8 +254,7 @@ converted <- harmonize_regions(
   value_cols = "population_total",
   type = "absolute",
   weight = "population",
-  target_year = "current",
-  level = "districts"
+  target_year = "current"
 )
 ```
 
@@ -411,8 +408,7 @@ converted <- harmonize_regions(
   value_cols = "care_rate",
   type = "ratio",
   weight = "population",
-  target_year = "current",
-  level = "districts"
+  target_year = "current"
 )
 ```
 
@@ -487,8 +483,7 @@ converted_counts <- harmonize_regions(
   value_cols = c("pflegebeduerftige", "population_total"),
   type = "absolute",
   weight = "population",
-  target_year = "current",
-  level = "districts"
+  target_year = "current"
 )
 converted_counts$care_rate <- converted_counts$pflegebeduerftige /
   converted_counts$population_total * 100

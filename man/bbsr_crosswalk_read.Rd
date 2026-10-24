@@ -15,7 +15,8 @@ Default \code{TRUE}; \code{FALSE} returns the files as published.}
 }
 \value{
 A tibble with columns \code{ags_old}, \code{name_old}, \code{ags_new},
-\code{name_new}, \code{year_from}, \code{year_to}, \code{share_area}, \code{share_population},
+\code{name_new}, \code{year_from}, \code{year_to}, \code{level} (\code{"districts"} or
+\code{"municipalities"}, from the file name), \code{share_area}, \code{share_population},
 \code{share_employment} (\code{NA} before 1997, since the BBSR only offers
 employment data as a weighting basis from 1997 onward), and the
 corresponding absolute values \code{area_old}, \code{population_old}, and

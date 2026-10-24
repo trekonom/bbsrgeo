@@ -37,6 +37,7 @@ check_regions <- function(
 ) {
   stopifnot(ags_col %in% names(data), year_col %in% names(data))
 
+  check_single_level(crosswalk)
   target_year_resolved <- resolve_target_year(target_year, crosswalk)
   ags <- normalize_ags(data[[ags_col]])
   year <- as.integer(data[[year_col]])

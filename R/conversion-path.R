@@ -3,6 +3,24 @@
 # applies a path to values; check_regions() applies it to the area units alone
 # and reports what the conversion would drop, so the two cannot disagree.
 
+# Aborts if a crosswalk read with bbsr_crosswalk_read() mixes levels
+# ("districts" and "municipalities"): a district AGS is also a valid municipal
+# one for a kreisfreie Stadt, so the units of the two cannot be told apart. A
+# crosswalk without a `level` column is accepted.
+check_single_level <- function(crosswalk) {
+  levels <- unique(stats::na.omit(crosswalk[["level"]]))
+  if (length(levels) > 1) {
+    rlang::abort(sprintf(
+      paste(
+        "The crosswalk mixes levels (%s). Read the districts and the",
+        "municipalities files separately."
+      ),
+      paste(levels, collapse = ", ")
+    ))
+  }
+  invisible()
+}
+
 # `target_year` as a year: "current" is the latest `year_to` in the crosswalk.
 resolve_target_year <- function(target_year, crosswalk) {
   if (identical(target_year, "current")) {

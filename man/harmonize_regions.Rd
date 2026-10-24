@@ -2,38 +2,9 @@
 % Please edit documentation in R/harmonize-regions.R
 \name{harmonize_regions}
 \alias{harmonize_regions}
-\alias{harmonize_regions_districts}
-\alias{harmonize_regions_municipalities}
 \title{Convert a regional statistics time series onto a consistent boundary}
 \usage{
 harmonize_regions(
-  data,
-  crosswalk,
-  ags_col,
-  year_col,
-  value_cols,
-  type = c("absolute", "ratio"),
-  weight = c("population", "area", "employment"),
-  target_year,
-  level = c("districts", "municipalities"),
-  allow_backcast = FALSE,
-  renormalize = TRUE
-)
-
-harmonize_regions_districts(
-  data,
-  crosswalk,
-  ags_col,
-  year_col,
-  value_cols,
-  type = c("absolute", "ratio"),
-  weight = c("population", "area", "employment"),
-  target_year,
-  allow_backcast = FALSE,
-  renormalize = TRUE
-)
-
-harmonize_regions_municipalities(
   data,
   crosswalk,
   ags_col,
@@ -49,8 +20,9 @@ harmonize_regions_municipalities(
 \arguments{
 \item{data}{Dataset in long panel format (see Details).}
 
-\item{crosswalk}{A crosswalk read with \code{\link[=bbsr_crosswalk_read]{bbsr_crosswalk_read()}}, matching
-\code{level}.}
+\item{crosswalk}{A crosswalk read with \code{\link[=bbsr_crosswalk_read]{bbsr_crosswalk_read()}}. Its \code{level}
+(districts or municipalities) is the level of \code{data}; a crosswalk that mixes
+levels is an error.}
 
 \item{ags_col}{Name of the AGS column in \code{data}.}
 
@@ -68,8 +40,6 @@ earlier conversion is an error.}
 
 \item{target_year}{Target year of the boundary (e.g. \code{2024L}) or
 \code{"current"} for the most recent boundary available in the crosswalk.}
-
-\item{level}{\code{"districts"} or \code{"municipalities"}.}
 
 \item{allow_backcast}{Explicitly allow backcasting (disaggregation onto
 an older boundary). Default \code{FALSE}.}
