@@ -18,9 +18,19 @@ Corrects rows of a crosswalk read with \code{\link[=bbsr_crosswalk_read]{bbsr_cr
 BBSR file is known to be wrong and the correct value is verified. The
 corrections change the data; \code{bbsr_crosswalk_read()} applies them by
 default (\code{fix = TRUE}). Each fix is listed with its evidence in
-\code{R/crosswalk-fixes.R}.
+\code{R/crosswalk-fixes.R} (the \code{crosswalk_fixes} table).
 }
 \details{
+Current fixes:
+\itemize{
+\item District file, 2011 -> 2012: a row with \code{name_old} Bernkastel-Wittlich is
+coded \code{ags_old} 07235000 (Trier-Saarburg); it belongs to 07231000. Evidence:
+with the recode, the area and population shares of both 07231000 and
+07235000 sum to 1 (before: 0.991 and 1.009), and the row's \code{area_old} of
+10.1 km2 equals the area 07231000 loses between 2010 -> 2011 and 2011 ->
+2012 (1178 to 1168).
+}
+
 A fix applies only when exactly one row matches its transition, codes and
 name. If the crosswalk contains the fix's transition and codes but no single
 matching row (e.g. BBSR corrected the file), the fix is not applied and the

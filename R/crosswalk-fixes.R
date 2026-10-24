@@ -27,7 +27,16 @@ crosswalk_fixes <- tibble::tibble(
 #' BBSR file is known to be wrong and the correct value is verified. The
 #' corrections change the data; `bbsr_crosswalk_read()` applies them by
 #' default (`fix = TRUE`). Each fix is listed with its evidence in
-#' `R/crosswalk-fixes.R`.
+#' `R/crosswalk-fixes.R` (the `crosswalk_fixes` table).
+#'
+#' Current fixes:
+#'
+#' * District file, 2011 -> 2012: a row with `name_old` Bernkastel-Wittlich is
+#'   coded `ags_old` 07235000 (Trier-Saarburg); it belongs to 07231000. Evidence:
+#'   with the recode, the area and population shares of both 07231000 and
+#'   07235000 sum to 1 (before: 0.991 and 1.009), and the row's `area_old` of
+#'   10.1 km2 equals the area 07231000 loses between 2010 -> 2011 and 2011 ->
+#'   2012 (1178 to 1168).
 #'
 #' A fix applies only when exactly one row matches its transition, codes and
 #' name. If the crosswalk contains the fix's transition and codes but no single
@@ -66,7 +75,10 @@ bbsr_crosswalk_fix <- function(crosswalk) {
     )
     if (length(matches) == 1) {
       crosswalk[[fix$column]][matches] <- fix$value
-      lines <- c(lines, paste0("Applied: ", label, ". ", fix$evidence))
+      lines <- c(
+        lines,
+        paste0("Applied: ", label, ". Evidence: ?bbsr_crosswalk_fix.")
+      )
     } else {
       lines <- c(
         lines,
