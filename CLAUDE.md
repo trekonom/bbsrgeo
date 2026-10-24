@@ -108,7 +108,10 @@ previously debugged source-data quirks.
   `R/*.R` (`Roxygen: list(markdown = TRUE)` in DESCRIPTION) — edit the
   roxygen comments, not the generated files, then re-roxygenise.
 - `README.md` is generated from `README.Rmd` — edit the latter, not the
-  former.
+  former. Its sample output shows the package's current warnings and messages:
+  after a change to them, run `dev/render-readme.R` (needs the cached BBSR
+  files) and commit the re-rendered `README.md` on its own, since the
+  re-render also picks up any earlier drift.
 
 ## Agent skills
 
