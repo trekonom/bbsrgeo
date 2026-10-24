@@ -34,6 +34,7 @@ bbsr_crosswalk_read <- function(path, fix = TRUE) {
   }
   bbsrgeo_check_names(data)
   bbsrgeo_check_share_sums(data)
+  bbsrgeo_check_count_shares(data)
   data
 }
 
@@ -104,6 +105,98 @@ bbsrgeo_check_names <- function(data) {
     stats::setNames(lines, rep("*", length(lines))),
     i = "Please check the original file if in doubt."
   ))
+  invisible(data)
+}
+
+#' Check that shares agree with their own counts
+#'
+#' For each weight basis, in an `ags_old`/transition group with several target
+#' rows, counts that are all observed, non-negative and differ between rows
+#' (as in [harmonize_regions()]), a positive total and shares summing to 1
+#' within `SHARE_SUM_TOLERANCE`, `count / total` should equal the share. A
+#' row deviates by more than the counts' resolution allows when
+#' `|count / total - share| > COUNT_RESOLUTION * (1 + n_rows) / total`. Groups
+#' with equal counts or shares summing off 1 are skipped. Reported as one
+#' message; the conversion uses the shares as given (ADR 0001).
+#'
+#' @param data Tibble read by [bbsr_crosswalk_read()].
+#' @return `data`, unchanged, invisibly.
+#' @noRd
+bbsrgeo_check_count_shares <- function(data) {
+  lines <- character()
+  for (basis in c("area", "population", "employment")) {
+    share_col <- paste0("share_", basis)
+    count_col <- paste0(basis, "_old")
+    if (!all(c(share_col, count_col) %in% names(data))) {
+      next
+    }
+    d <- data.frame(
+      ags_old = data$ags_old,
+      year_from = data$year_from,
+      year_to = data$year_to,
+      share = data[[share_col]],
+      count = data[[count_col]]
+    )
+    key <- paste(d$ags_old, d$year_from, d$year_to)
+    group_sum <- function(x) stats::ave(x, key, FUN = sum)
+    group_n <- stats::ave(d$share, key, FUN = length)
+    total <- group_sum(d$count)
+    varies <- stats::ave(d$count, key, FUN = function(v) {
+      !anyNA(v) &&
+        diff(range(v)) > COUNT_DIFFERENCE_TOLERANCE * max(abs(v))
+    }) ==
+      1
+    non_negative <- stats::ave(d$count, key, FUN = function(v) {
+      all(v >= 0)
+    }) ==
+      1
+    share_sum <- group_sum(d$share)
+    eligible <- group_n > 1 &
+      varies &
+      non_negative &
+      !is.na(total) &
+      total > 0 &
+      !is.na(share_sum) &
+      !share_sum_deviates(share_sum)
+    excess <- abs(d$count / total - d$share) -
+      COUNT_RESOLUTION * (1 + group_n) / total
+    disagree <- eligible & !is.na(excess) & excess > 0
+    if (!any(disagree)) {
+      next
+    }
+    groups <- unique(d[disagree, c("ags_old", "year_from", "year_to")])
+    groups <- groups[order(groups$ags_old, groups$year_from), , drop = FALSE]
+    shown <- utils::head(groups, 5)
+    lines <- c(
+      lines,
+      sprintf(
+        "%s: %d group(s), e.g. %s",
+        basis,
+        nrow(groups),
+        paste(
+          sprintf(
+            "ags_old = '%s', year_from = %d",
+            shown$ags_old,
+            shown$year_from
+          ),
+          collapse = "; "
+        )
+      )
+    )
+  }
+  if (length(lines) > 0) {
+    rlang::inform(c(
+      paste(
+        "Some shares disagree with their counts by more than the counts'",
+        "resolution allows (count / total differs from the share):"
+      ),
+      stats::setNames(lines, rep("*", length(lines))),
+      i = paste(
+        "The conversion uses the shares as given. Please check the original",
+        "file if in doubt."
+      )
+    ))
+  }
   invisible(data)
 }
 

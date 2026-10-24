@@ -207,6 +207,13 @@ test_that("the real BBSR files have no header rows among their data rows", {
         invokeRestart("muffleMessage")
       }
     )
+    # No file has shares that disagree with their counts beyond the counts'
+    # resolution (bbsrgeo_check_count_shares(), measured 2026-10-24; the
+    # municipal 2000-2010 population deviation of 0.0072 is inside the bound).
+    expect_false(
+      any(grepl("disagree with their counts", messages)),
+      label = name
+    )
     # Only the district file has a documented fix (bbsr_crosswalk_fix()).
     expect_equal(
       any(grepl("Documented fixes", messages)),
@@ -401,4 +408,73 @@ test_that("the real files: only the unfixed district row has inconsistent names"
   expect_match(unfixed, "1 ags_old group.*07235000.*2011 -> 2012")
   expect_false(grepl("ags_new group", unfixed))
   expect_length(name_warnings(), 0)
+})
+
+# Constructed rows for bbsrgeo_check_count_shares(): the area shares and counts
+# of one old unit (`share` and `area_old` per target row).
+count_rows <- function(ags, share, area_old) {
+  tibble::tibble(
+    ags_old = ags,
+    year_from = 2000L,
+    year_to = 2001L,
+    share_area = share,
+    area_old = area_old
+  )
+}
+
+test_that("shares that agree with their counts are not reported", {
+  d <- count_rows("01001000", c(0.25, 0.75), c(25, 75))
+  expect_no_message(bbsrgeo_check_count_shares(d))
+})
+
+test_that("shares that disagree with their counts are reported with an example", {
+  d <- count_rows("01001000", c(0.5, 0.5), c(25, 75))
+  expect_message(
+    bbsrgeo_check_count_shares(d),
+    "area: 1 group.*ags_old = '01001000', year_from = 2000.*as given"
+  )
+})
+
+test_that("a deviation within the counts' resolution is not reported", {
+  # Counts rounded to 0.1 on a total of 1: count / total is off by up to
+  # 0.05 * (1 + 2) / 1 = 0.15 (COUNT_RESOLUTION, bound per row).
+  d <- count_rows("01001000", c(0.3, 0.7), c(0.4, 0.6))
+  expect_no_message(bbsrgeo_check_count_shares(d))
+})
+
+test_that("equal counts are skipped", {
+  d <- count_rows("01001000", c(0.2, 0.8), c(50, 50))
+  expect_no_message(bbsrgeo_check_count_shares(d))
+})
+
+test_that("a group whose shares sum off 1 is skipped", {
+  d <- count_rows("01001000", c(1, 1), c(25, 75))
+  expect_no_message(bbsrgeo_check_count_shares(d))
+})
+
+test_that("a missing count column does not error", {
+  d <- count_rows("01001000", c(0.5, 0.5), c(25, 75))
+  expect_no_error(bbsrgeo_check_count_shares(d[names(d) != "area_old"]))
+})
+
+test_that("the real files: the unfixed district row disagrees with its counts", {
+  skip_on_cran()
+  skip_if_offline()
+  path <- tryCatch(
+    bbsr_crosswalk_download(level = "districts", kind = "annual"),
+    error = function(e) skip("Could not download the BBSR area crosswalk.")
+  )
+  count_messages <- function(...) {
+    out <- character()
+    withCallingHandlers(
+      suppressWarnings(bbsr_crosswalk_read(path, ...)),
+      message = function(m) {
+        out <<- c(out, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+    out[grepl("disagree with their counts", out)]
+  }
+  expect_match(count_messages(fix = FALSE), "07235000.*year_from = 2011")
+  expect_length(count_messages(), 0)
 })

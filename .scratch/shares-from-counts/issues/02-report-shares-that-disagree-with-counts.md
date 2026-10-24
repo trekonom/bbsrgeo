@@ -1,6 +1,6 @@
 # Report shares that disagree with the counts, without changing the conversion
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 Split off from issue 01 (decision: keep the shares, ADR 0001). Wrong shares
@@ -102,3 +102,12 @@ touch), `|count / total - share|` per row:
 - Recoding the miscoded 07235000 (2011 -> 2012) row; see the triage comment. A
   check of `name_old` against `ags_old` is a separate decision.
 
+
+## Resolution
+
+`bbsrgeo_check_count_shares()` in `R/crosswalk-read.R` (bound
+`COUNT_RESOLUTION` in `R/utils.R`), called by `bbsr_crosswalk_read()` after the
+fixes, the name check and the share-sum check. Measured on the five files: with
+`fix = FALSE` the district file reports 07235000 (2011); with the default fix,
+and for the municipal files, nothing. The municipal 2000-2010 population
+deviation of 0.0072 is inside the bound, so `COUNT_RESOLUTION` was not changed.

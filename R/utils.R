@@ -57,6 +57,12 @@ SHARE_SUM_FLOAT_SLACK <- 1e-9
 # group's rows that is read as a real difference, not rounding noise.
 COUNT_DIFFERENCE_TOLERANCE <- 1e-8
 
+# Largest rounding error of one count (`area_old` etc.) that is assumed: half
+# of the coarsest resolution observed, 0.1 (the 1990-2000 population counts).
+# Used to bound how far `count / total` may lie from a share (see
+# bbsrgeo_check_count_shares()).
+COUNT_RESOLUTION <- 0.05
+
 # Whether a share sum deviates from 1 by more than SHARE_SUM_TOLERANCE.
 share_sum_deviates <- function(sums) {
   abs(sums - 1) - SHARE_SUM_TOLERANCE > SHARE_SUM_FLOAT_SLACK
