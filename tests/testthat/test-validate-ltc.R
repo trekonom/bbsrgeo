@@ -13,7 +13,9 @@ ltc_harmonized_vs_inkar <- function() {
     error = function(e) NULL
   )
   if (is.null(crosswalk)) {
-    skip("Could not download/read the BBSR area crosswalk (offline or BBSR unreachable).")
+    skip(
+      "Could not download/read the BBSR area crosswalk (offline or BBSR unreachable)."
+    )
   }
 
   converted <- harmonize_regions(
@@ -36,7 +38,8 @@ ltc_harmonized_vs_inkar <- function() {
   compared <- merge(
     converted[, c("kreiskennziffer", "year", "care_rate")],
     ltcinkar[, c("ags", "year", "care_rate")],
-    by.x = c("kreiskennziffer", "year"), by.y = c("ags", "year"),
+    by.x = c("kreiskennziffer", "year"),
+    by.y = c("ags", "year"),
     suffixes = c("_ours", "_inkar")
   )
   compared$rel_diff <- abs(compared$care_rate_ours - compared$care_rate_inkar) /
@@ -56,7 +59,8 @@ ltc_harmonized_vs_inkar <- function() {
   )
   affected <- unique(substr(
     share_sums$ags_old[abs(share_sums$share_population - 1) > 0.01],
-    1, 5
+    1,
+    5
   ))
 
   list(
@@ -106,7 +110,11 @@ test_that("harmonize_regions(type = 'ratio') output for ltcregio matches INKAR w
   # noise - there is no "98% within 1%" tolerance here.
   for (check_year in ltc_check_years) {
     rel_diff <- compared$rel_diff[compared$year == check_year]
-    expect_lt(max(rel_diff), 0.006, label = paste("year", check_year, "max rel. diff."))
+    expect_lt(
+      max(rel_diff),
+      0.006,
+      label = paste("year", check_year, "max rel. diff.")
+    )
   }
 })
 

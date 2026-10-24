@@ -13,10 +13,11 @@
 #'   (`level`, `kind`, `year_from`, `year_to`, `url`, `file_size`).
 #' @export
 bbsr_crosswalk_available_live <- function(url = NULL) {
-  url <- url %||% paste0(
-    "https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/",
-    "Raumabgrenzungen/umstiegsschluessel/umsteigeschluessel.html"
-  )
+  url <- url %||%
+    paste0(
+      "https://www.bbsr.bund.de/BBSR/DE/forschung/raumbeobachtung/",
+      "Raumabgrenzungen/umstiegsschluessel/umsteigeschluessel.html"
+    )
   rlang::check_installed("rvest", reason = "to parse the BBSR page live.")
 
   resp <- httr2::request(url) |>
@@ -27,7 +28,9 @@ bbsr_crosswalk_available_live <- function(url = NULL) {
   page <- rvest::read_html(httr2::resp_body_string(resp))
   table_node <- rvest::html_element(page, "table")
   if (inherits(table_node, "xml_missing")) {
-    rlang::abort("Could not find a crosswalk table on the BBSR page - the page structure has probably changed.")
+    rlang::abort(
+      "Could not find a crosswalk table on the BBSR page - the page structure has probably changed."
+    )
   }
 
   # The scraped page and its table headers/cell text are in German
@@ -58,14 +61,32 @@ bbsr_crosswalk_available_live <- function(url = NULL) {
   hrefs <- hrefs[seq_len(n)]
   link_texts <- link_texts[seq_len(n)]
 
-  years <- regmatches(rows$year_span, regexec("(\\d{4}).*?(\\d{4})", rows$year_span))
-  year_from <- vapply(years, function(m) if (length(m) == 3) as.integer(m[2]) else NA_integer_, integer(1))
-  year_to <- vapply(years, function(m) if (length(m) == 3) as.integer(m[3]) else NA_integer_, integer(1))
+  years <- regmatches(
+    rows$year_span,
+    regexec("(\\d{4}).*?(\\d{4})", rows$year_span)
+  )
+  year_from <- vapply(
+    years,
+    function(m) if (length(m) == 3) as.integer(m[2]) else NA_integer_,
+    integer(1)
+  )
+  year_to <- vapply(
+    years,
+    function(m) if (length(m) == 3) as.integer(m[3]) else NA_integer_,
+    integer(1)
+  )
 
   has_target_year <- grepl("\\d{4}", rows$kind_de)
   target_year <- rep(NA_character_, length(rows$kind_de))
-  target_year[has_target_year] <- regmatches(rows$kind_de[has_target_year], regexpr("\\d{4}", rows$kind_de[has_target_year]))
-  kind <- ifelse(!is.na(target_year), paste0("conversion_", target_year), "annual")
+  target_year[has_target_year] <- regmatches(
+    rows$kind_de[has_target_year],
+    regexpr("\\d{4}", rows$kind_de[has_target_year])
+  )
+  kind <- ifelse(
+    !is.na(target_year),
+    paste0("conversion_", target_year),
+    "annual"
+  )
 
   level <- dplyr::case_when(
     rows$level_de == "Gemeinden" ~ "municipalities",

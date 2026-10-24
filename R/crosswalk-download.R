@@ -20,33 +20,43 @@
 #' @return Character vector with the local paths of the (downloaded or
 #'   already cached) files.
 #' @export
-bbsr_crosswalk_download <- function(level = c("municipalities", "districts"),
-                                     kind = c("annual", "conversion_2019", "conversion_2020", "conversion_2021"),
-                                     year_from = NULL,
-                                     year_to = NULL,
-                                     cache_dir = NULL,
-                                     overwrite = FALSE) {
+bbsr_crosswalk_download <- function(
+  level = c("municipalities", "districts"),
+  kind = c("annual", "conversion_2019", "conversion_2020", "conversion_2021"),
+  year_from = NULL,
+  year_to = NULL,
+  cache_dir = NULL,
+  overwrite = FALSE
+) {
   level <- match.arg(level)
   kind <- match.arg(kind)
   cache_dir <- bbsrgeo_cache_dir(cache_dir)
 
   matches <- bbsr_crosswalk_available(level)
   matches <- matches[matches$kind == kind, , drop = FALSE]
-  if (!is.null(year_from)) matches <- matches[matches$year_from == year_from, , drop = FALSE]
-  if (!is.null(year_to)) matches <- matches[matches$year_to == year_to, , drop = FALSE]
+  if (!is.null(year_from)) {
+    matches <- matches[matches$year_from == year_from, , drop = FALSE]
+  }
+  if (!is.null(year_to)) {
+    matches <- matches[matches$year_to == year_to, , drop = FALSE]
+  }
 
   if (nrow(matches) == 0) {
     rlang::abort(sprintf(
       "No matching crosswalk file found (level = '%s', kind = '%s', year_from = %s, year_to = %s). See bbsr_crosswalk_available() for available combinations.",
-      level, kind,
+      level,
+      kind,
       if (is.null(year_from)) "NULL" else year_from,
       if (is.null(year_to)) "NULL" else year_to
     ))
   }
 
   vapply(
-    matches$url, bbsrgeo_download_file,
-    FUN.VALUE = character(1), cache_dir = cache_dir, overwrite = overwrite,
+    matches$url,
+    bbsrgeo_download_file,
+    FUN.VALUE = character(1),
+    cache_dir = cache_dir,
+    overwrite = overwrite,
     USE.NAMES = FALSE
   )
 }
@@ -67,7 +77,10 @@ bbsrgeo_download_file <- function(url, cache_dir, overwrite) {
         httr2::req_perform()
     },
     error = function(e) {
-      rlang::abort(sprintf("Download of %s failed: %s", url, conditionMessage(e)), parent = e)
+      rlang::abort(
+        sprintf("Download of %s failed: %s", url, conditionMessage(e)),
+        parent = e
+      )
     }
   )
   writeBin(httr2::resp_body_raw(resp), target)

@@ -22,17 +22,77 @@ raw <- function(...) {
 # --- File 1: "annual" (no 'umrech' in the name) -------------------------
 # Sheet "1999-2000": 8 columns, one unchanged district + one split
 sheet_1999_2000 <- raw(
-  c("01000001", "District A", "1", "1", "100", "1000", "01000001", "District A"),
-  c("01000002", "District B", "0.4", "0.3", "40", "300", "01000009", "District N"),
-  c("01000002", "District B", "0.6", "0.7", "60", "700", "01000010", "District M")
+  c(
+    "01000001",
+    "District A",
+    "1",
+    "1",
+    "100",
+    "1000",
+    "01000001",
+    "District A"
+  ),
+  c(
+    "01000002",
+    "District B",
+    "0.4",
+    "0.3",
+    "40",
+    "300",
+    "01000009",
+    "District N"
+  ),
+  c(
+    "01000002",
+    "District B",
+    "0.6",
+    "0.7",
+    "60",
+    "700",
+    "01000010",
+    "District M"
+  )
 )
 
 # Sheet "2000-2001": 10 columns (with employment), unchanged units
-head10 <- c("HEAD1", "HEAD2", "HEAD3", "HEAD4", "HEAD5", "HEAD6", "HEAD7", "HEAD8", "HEAD9", "HEAD10")
+head10 <- c(
+  "HEAD1",
+  "HEAD2",
+  "HEAD3",
+  "HEAD4",
+  "HEAD5",
+  "HEAD6",
+  "HEAD7",
+  "HEAD8",
+  "HEAD9",
+  "HEAD10"
+)
 sheet_2000_2001 <- rbind(
   head10,
-  c("01000001", "District A", "1", "1", "1", "100", "1000", "10", "01000001", "District A"),
-  c("01000009", "District N", "1", "1", "1", "40", "300", "5", "01000009", "District N")
+  c(
+    "01000001",
+    "District A",
+    "1",
+    "1",
+    "1",
+    "100",
+    "1000",
+    "10",
+    "01000001",
+    "District A"
+  ),
+  c(
+    "01000009",
+    "District N",
+    "1",
+    "1",
+    "1",
+    "40",
+    "300",
+    "5",
+    "01000009",
+    "District N"
+  )
 )
 
 # Sheet "2001" (single-year sheet name as used in municipality files -> 2001-2002), 8 columns

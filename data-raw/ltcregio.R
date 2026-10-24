@@ -142,7 +142,9 @@ valid_ags_by_year <- c(
     function(y) unique(crosswalk$ags_old[crosswalk$year_from == y])
   ),
   list(
-    `2024` = unique(crosswalk$ags_new[crosswalk$year_to == max(crosswalk$year_to)])
+    `2024` = unique(crosswalk$ags_new[
+      crosswalk$year_to == max(crosswalk$year_to)
+    ])
   )
 )
 
@@ -153,7 +155,8 @@ valid_ags_by_year <- c(
 ltcregio <- ltc_districts |>
   filter(
     purrr::map2_lgl(
-      .data$ags, .data$year,
+      .data$ags,
+      .data$year,
       \(ags, year) ags %in% valid_ags_by_year[[as.character(year)]]
     )
   ) |>
@@ -163,8 +166,13 @@ ltcregio <- ltc_districts |>
   ) |>
   mutate(care_rate = .data$pflegebeduerftige / .data$population_total * 100) |>
   select(
-    "ags", "state", "district_name", "year",
-    "pflegebeduerftige", "population_total", "care_rate"
+    "ags",
+    "state",
+    "district_name",
+    "year",
+    "pflegebeduerftige",
+    "population_total",
+    "care_rate"
   ) |>
   arrange(.data$state, .data$ags, .data$year)
 

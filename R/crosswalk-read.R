@@ -59,7 +59,10 @@ bbsrgeo_check_share_sums <- function(data) {
         "itself (e.g. missing counterparts for minor boundary corrections)",
         "- please check the original file if in doubt."
       ),
-      nrow(off), off$ags_old[1], off$year_from[1], off$area_sum[1]
+      nrow(off),
+      off$ags_old[1],
+      off$year_from[1],
+      off$area_sum[1]
     ))
   }
   invisible(data)
@@ -91,7 +94,10 @@ bbsrgeo_file_meta <- function(path) {
     ))
   }
 
-  target_year_match <- regmatches(file_name, regexpr("umrech-(\\d{4})", file_name))
+  target_year_match <- regmatches(
+    file_name,
+    regexpr("umrech-(\\d{4})", file_name)
+  )
   if (length(target_year_match) > 0 && nzchar(target_year_match)) {
     target_year <- as.integer(sub("umrech-", "", target_year_match))
     kind <- paste0("conversion_", target_year)
@@ -100,7 +106,12 @@ bbsrgeo_file_meta <- function(path) {
     kind <- "annual"
   }
 
-  list(level = level, kind = kind, target_year = target_year, file_name = file_name)
+  list(
+    level = level,
+    kind = kind,
+    target_year = target_year,
+    file_name = file_name
+  )
 }
 
 bbsrgeo_sheet_years <- function(sheet, meta) {
@@ -116,7 +127,8 @@ bbsrgeo_sheet_years <- function(sheet, meta) {
     }
     rlang::abort(sprintf(
       "Unexpected sheet name '%s' in an 'annual' file (%s) - expected 'YYYY-YYYY' or 'YYYY'.",
-      sheet, meta$file_name
+      sheet,
+      meta$file_name
     ))
   }
 
@@ -124,7 +136,8 @@ bbsrgeo_sheet_years <- function(sheet, meta) {
   if (length(m) != 2) {
     rlang::abort(sprintf(
       "Unexpected sheet name '%s' in a 'conversion' file (%s) - expected 'YYYY'.",
-      sheet, meta$file_name
+      sheet,
+      meta$file_name
     ))
   }
   list(from = as.integer(m[2]), to = meta$target_year)
@@ -132,20 +145,40 @@ bbsrgeo_sheet_years <- function(sheet, meta) {
 
 bbsrgeo_read_sheet <- function(path, sheet, meta) {
   raw <- suppressMessages(
-    readxl::read_excel(path, sheet = sheet, col_names = FALSE, skip = 1, col_types = "text")
+    readxl::read_excel(
+      path,
+      sheet = sheet,
+      col_names = FALSE,
+      skip = 1,
+      col_types = "text"
+    )
   )
   n <- ncol(raw)
 
   if (n == 8) {
     cols <- c(
-      "ags_old", "name_old", "share_area", "share_population",
-      "area_old", "population_old", "ags_new", "name_new"
+      "ags_old",
+      "name_old",
+      "share_area",
+      "share_population",
+      "area_old",
+      "population_old",
+      "ags_new",
+      "name_new"
     )
     has_employment <- FALSE
   } else if (n == 10) {
     cols <- c(
-      "ags_old", "name_old", "share_area", "share_population", "share_employment",
-      "area_old", "population_old", "employment_old", "ags_new", "name_new"
+      "ags_old",
+      "name_old",
+      "share_area",
+      "share_population",
+      "share_employment",
+      "area_old",
+      "population_old",
+      "employment_old",
+      "ags_new",
+      "name_new"
     )
     has_employment <- TRUE
   } else {
@@ -155,7 +188,9 @@ bbsrgeo_read_sheet <- function(path, sheet, meta) {
         "The table structure deviates from the expected structure (8 or 10 columns) -",
         "please inspect the file manually, the BBSR may have changed the format."
       ),
-      n, sheet, basename(path)
+      n,
+      sheet,
+      basename(path)
     ))
   }
   names(raw) <- cols

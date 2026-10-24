@@ -27,11 +27,15 @@ check_regions <- function(data, crosswalk, ags_col, year_col = NULL) {
   n_unknown <- sum(unknown)
 
   if (n_unknown == 0) {
-    message(sprintf("All %d rows have an AGS known to the crosswalk.", nrow(data)))
+    message(sprintf(
+      "All %d rows have an AGS known to the crosswalk.",
+      nrow(data)
+    ))
   } else {
     message(sprintf(
       "%d of %d rows have an AGS that does not occur in the crosswalk (possible causes: typos, an AGS outside the covered level, or a year outside the table).",
-      n_unknown, nrow(data)
+      n_unknown,
+      nrow(data)
     ))
   }
 

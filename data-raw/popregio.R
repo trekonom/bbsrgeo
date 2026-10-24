@@ -127,7 +127,9 @@ popregio_long <- districts_raw |>
     district_name = .data$"1_variable_attribute_label",
     year = as.integer(substr(.data$time, 1, 4)),
     sex = c(
-      "Total" = "total", "männlich" = "male", "weiblich" = "female"
+      "Total" = "total",
+      "männlich" = "male",
+      "weiblich" = "female"
     )[.data$"2_variable_attribute_label"],
     population = suppressWarnings(as.integer(.data$value))
   ) |>
@@ -170,7 +172,9 @@ valid_ags_by_year <- c(
     function(y) unique(crosswalk$ags_old[crosswalk$year_from == y])
   ),
   list(
-    `2024` = unique(crosswalk$ags_new[crosswalk$year_to == max(crosswalk$year_to)])
+    `2024` = unique(crosswalk$ags_new[
+      crosswalk$year_to == max(crosswalk$year_to)
+    ])
   )
 )
 
@@ -197,14 +201,20 @@ state_by_ags_prefix <- c(
 popregio <- popregio_raw |>
   filter(
     purrr::map2_lgl(
-      .data$ags, .data$year,
+      .data$ags,
+      .data$year,
       \(ags, year) ags %in% valid_ags_by_year[[as.character(year)]]
     )
   ) |>
   mutate(state = state_by_ags_prefix[substr(.data$ags, 1, 2)]) |>
   select(
-    "ags", "state", "district_name", "year",
-    "population_total", "population_male", "population_female"
+    "ags",
+    "state",
+    "district_name",
+    "year",
+    "population_total",
+    "population_male",
+    "population_female"
   ) |>
   arrange(.data$state, .data$ags, .data$year)
 

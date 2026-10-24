@@ -10,7 +10,9 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
     error = function(e) NULL
   )
   if (is.null(crosswalk)) {
-    skip("Could not download/read the BBSR area crosswalk (offline or BBSR unreachable).")
+    skip(
+      "Could not download/read the BBSR area crosswalk (offline or BBSR unreachable)."
+    )
   }
 
   # Expected warning: renormalization of the crosswalk's off-1 shares.
@@ -47,15 +49,20 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
   # vignette("bbsrgeo"), section "Validation with INKAR", for why these
   # two years are informative and for the census-2011 caveat.
   for (check_year in c(2000L, 2015L)) {
-    ours <- converted[converted$year == check_year, c("kreiskennziffer", "population_total")]
+    ours <- converted[
+      converted$year == check_year,
+      c("kreiskennziffer", "population_total")
+    ]
     inkar_year <- popinkar[
       popinkar$year == check_year,
       c("ags", "population_total")
     ]
 
     compared <- merge(
-      ours, inkar_year,
-      by.x = "kreiskennziffer", by.y = "ags",
+      ours,
+      inkar_year,
+      by.x = "kreiskennziffer",
+      by.y = "ags",
       suffixes = c("_ours", "_inkar")
     )
 
@@ -64,11 +71,14 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
     # Region Hannover - that used to leave real gaps here) is present in
     # both sources.
     expect_equal(
-      nrow(compared), n_current_districts,
+      nrow(compared),
+      n_current_districts,
       info = paste("year", check_year)
     )
 
-    rel_diff <- abs(compared$population_total_ours - compared$population_total_inkar) /
+    rel_diff <- abs(
+      compared$population_total_ours - compared$population_total_inkar
+    ) /
       compared$population_total_inkar
 
     # The bulk of the distribution should match almost exactly (median
@@ -86,11 +96,20 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
     # ceiling below still guards against a genuine regression (e.g. the
     # Aachen ~44%/near-total-loss bug this test caught before the AGS
     # recoding fix).
-    expect_lt(stats::median(rel_diff), 0.001, label = paste("year", check_year, "median rel. diff."))
+    expect_lt(
+      stats::median(rel_diff),
+      0.001,
+      label = paste("year", check_year, "median rel. diff.")
+    )
     expect_gte(
-      mean(rel_diff < 0.01), 0.98,
+      mean(rel_diff < 0.01),
+      0.98,
       label = paste("year", check_year, "share of districts within 1%")
     )
-    expect_lt(max(rel_diff), 0.10, label = paste("year", check_year, "max rel. diff."))
+    expect_lt(
+      max(rel_diff),
+      0.10,
+      label = paste("year", check_year, "max rel. diff.")
+    )
   }
 })

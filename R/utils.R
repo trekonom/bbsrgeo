@@ -1,6 +1,7 @@
 bbsrgeo_user_agent <- function() {
   paste0(
-    "bbsrgeo/", as.character(utils::packageVersion("bbsrgeo")),
+    "bbsrgeo/",
+    as.character(utils::packageVersion("bbsrgeo")),
     " (R package for BBSR area crosswalks; contact: stefan.moog@prognos.com)"
   )
 }
@@ -33,7 +34,8 @@ normalize_ags <- function(x) {
   if (any(invalid)) {
     rlang::warn(sprintf(
       "%d AGS value(s) could not be parsed as a number and were set to NA (e.g. '%s').",
-      sum(invalid), x[which(invalid)[1]]
+      sum(invalid),
+      x[which(invalid)[1]]
     ))
   }
 

@@ -1,11 +1,26 @@
 test_that("bbsr_crosswalk_read parses an 'annual' file correctly", {
-  d <- bbsr_crosswalk_read(test_path("fixtures", "ref-kreise-testfixture-jaehrlich.xlsx"))
-
-  expect_named(d, c(
-    "ags_old", "name_old", "ags_new", "name_new", "year_from", "year_to",
-    "share_area", "share_population", "share_employment",
-    "area_old", "population_old", "employment_old"
+  d <- bbsr_crosswalk_read(test_path(
+    "fixtures",
+    "ref-kreise-testfixture-jaehrlich.xlsx"
   ))
+
+  expect_named(
+    d,
+    c(
+      "ags_old",
+      "name_old",
+      "ags_new",
+      "name_new",
+      "year_from",
+      "year_to",
+      "share_area",
+      "share_population",
+      "share_employment",
+      "area_old",
+      "population_old",
+      "employment_old"
+    )
+  )
   expect_equal(nrow(d), 6)
 
   # Sheet "1999-2000": hyphenated sheet name -> year_from/year_to taken directly from it
@@ -30,7 +45,10 @@ test_that("bbsr_crosswalk_read parses an 'annual' file correctly", {
 })
 
 test_that("bbsr_crosswalk_read parses a 'conversion_*' file correctly (fixed target year)", {
-  d <- bbsr_crosswalk_read(test_path("fixtures", "ref-kreise-umrech-2021-testfixture.xlsx"))
+  d <- bbsr_crosswalk_read(test_path(
+    "fixtures",
+    "ref-kreise-umrech-2021-testfixture.xlsx"
+  ))
 
   expect_equal(nrow(d), 2)
   # Target year comes from the file name (umrech-2021), not the sheet name
@@ -39,7 +57,10 @@ test_that("bbsr_crosswalk_read parses a 'conversion_*' file correctly (fixed tar
 })
 
 test_that("bbsr_crosswalk_read normalizes AGS to 8 digits", {
-  d <- bbsr_crosswalk_read(test_path("fixtures", "ref-kreise-testfixture-jaehrlich.xlsx"))
+  d <- bbsr_crosswalk_read(test_path(
+    "fixtures",
+    "ref-kreise-testfixture-jaehrlich.xlsx"
+  ))
   expect_true(all(nchar(d$ags_old) == 8))
   expect_true(all(nchar(d$ags_new) == 8))
 })

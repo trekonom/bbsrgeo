@@ -66,64 +66,116 @@
 #' @return A tibble with columns `ags_col`, `year_col`, `value_cols`
 #'   (converted), and `boundary_year` (= `target_year`, resolved to a year).
 #' @export
-harmonize_regions <- function(data,
-                               crosswalk,
-                               ags_col,
-                               year_col,
-                               value_cols,
-                               type = c("absolute", "ratio"),
-                               weight = c("population", "area", "employment"),
-                               target_year,
-                               level = c("districts", "municipalities"),
-                               allow_backcast = FALSE) {
+harmonize_regions <- function(
+  data,
+  crosswalk,
+  ags_col,
+  year_col,
+  value_cols,
+  type = c("absolute", "ratio"),
+  weight = c("population", "area", "employment"),
+  target_year,
+  level = c("districts", "municipalities"),
+  allow_backcast = FALSE
+) {
   type <- match.arg(type)
   weight <- match.arg(weight)
   level <- match.arg(level)
 
   if (level == "districts") {
     harmonize_regions_districts(
-      data, crosswalk, ags_col, year_col, value_cols,
-      type, weight, target_year, allow_backcast
+      data,
+      crosswalk,
+      ags_col,
+      year_col,
+      value_cols,
+      type,
+      weight,
+      target_year,
+      allow_backcast
     )
   } else {
     harmonize_regions_municipalities(
-      data, crosswalk, ags_col, year_col, value_cols,
-      type, weight, target_year, allow_backcast
+      data,
+      crosswalk,
+      ags_col,
+      year_col,
+      value_cols,
+      type,
+      weight,
+      target_year,
+      allow_backcast
     )
   }
 }
 
 #' @rdname harmonize_regions
 #' @export
-harmonize_regions_districts <- function(data, crosswalk, ags_col, year_col,
-                                         value_cols, type = c("absolute", "ratio"),
-                                         weight = c("population", "area", "employment"),
-                                         target_year, allow_backcast = FALSE) {
+harmonize_regions_districts <- function(
+  data,
+  crosswalk,
+  ags_col,
+  year_col,
+  value_cols,
+  type = c("absolute", "ratio"),
+  weight = c("population", "area", "employment"),
+  target_year,
+  allow_backcast = FALSE
+) {
   type <- match.arg(type)
   weight <- match.arg(weight)
   harmonize_regions_impl(
-    data, crosswalk, ags_col, year_col, value_cols,
-    type, weight, target_year, allow_backcast
+    data,
+    crosswalk,
+    ags_col,
+    year_col,
+    value_cols,
+    type,
+    weight,
+    target_year,
+    allow_backcast
   )
 }
 
 #' @rdname harmonize_regions
 #' @export
-harmonize_regions_municipalities <- function(data, crosswalk, ags_col, year_col,
-                                              value_cols, type = c("absolute", "ratio"),
-                                              weight = c("population", "area", "employment"),
-                                              target_year, allow_backcast = FALSE) {
+harmonize_regions_municipalities <- function(
+  data,
+  crosswalk,
+  ags_col,
+  year_col,
+  value_cols,
+  type = c("absolute", "ratio"),
+  weight = c("population", "area", "employment"),
+  target_year,
+  allow_backcast = FALSE
+) {
   type <- match.arg(type)
   weight <- match.arg(weight)
   harmonize_regions_impl(
-    data, crosswalk, ags_col, year_col, value_cols,
-    type, weight, target_year, allow_backcast
+    data,
+    crosswalk,
+    ags_col,
+    year_col,
+    value_cols,
+    type,
+    weight,
+    target_year,
+    allow_backcast
   )
 }
 
-harmonize_regions_impl <- function(data, crosswalk, ags_col, year_col,
-                                    value_cols, type, weight, target_year,
-                                    allow_backcast) {
+harmonize_regions_impl <- function(
+  data,
+  crosswalk,
+  ags_col,
+  year_col,
+  value_cols,
+  type,
+  weight,
+  target_year,
+  allow_backcast
+) {
   stopifnot(
     ags_col %in% names(data),
     year_col %in% names(data),
@@ -144,7 +196,8 @@ harmonize_regions_impl <- function(data, crosswalk, ags_col, year_col,
 
   if (weight == "employment") {
     check_employment_available(
-      crosswalk, min(base$..year, target_year_resolved),
+      crosswalk,
+      min(base$..year, target_year_resolved),
       max(base$..year, target_year_resolved)
     )
   }
@@ -152,16 +205,25 @@ harmonize_regions_impl <- function(data, crosswalk, ags_col, year_col,
   crosswalk_forward <- crosswalk
   if (type == "absolute") {
     crosswalk_forward <- renormalize_forward_shares(
-      crosswalk, paste0("share_", weight),
-      min(base$..year), target_year_resolved
+      crosswalk,
+      paste0("share_", weight),
+      min(base$..year),
+      target_year_resolved
     )
   }
 
   groups <- split(base, base$..year)
   result <- purrr::map_dfr(groups, function(group) {
     harmonize_path(
-      group, crosswalk, crosswalk_forward, value_cols, type, weight,
-      group$..year[[1]], target_year_resolved, allow_backcast
+      group,
+      crosswalk,
+      crosswalk_forward,
+      value_cols,
+      type,
+      weight,
+      group$..year[[1]],
+      target_year_resolved,
+      allow_backcast
     )
   })
 
@@ -172,8 +234,17 @@ harmonize_regions_impl <- function(data, crosswalk, ags_col, year_col,
   result[, col_names]
 }
 
-harmonize_path <- function(group, crosswalk, crosswalk_forward, value_cols, type,
-                            weight, start_year, target_year, allow_backcast) {
+harmonize_path <- function(
+  group,
+  crosswalk,
+  crosswalk_forward,
+  value_cols,
+  type,
+  weight,
+  start_year,
+  target_year,
+  allow_backcast
+) {
   if (start_year == target_year) {
     return(group)
   }
@@ -189,7 +260,8 @@ harmonize_path <- function(group, crosswalk, crosswalk_forward, value_cols, type
           "are designed for forward conversion; backcasting is more",
           "error-prone. Enable explicitly with allow_backcast = TRUE."
         ),
-        start_year, target_year
+        start_year,
+        target_year
       ))
     }
     rlang::warn(paste(
@@ -222,11 +294,18 @@ harmonize_path <- function(group, crosswalk, crosswalk_forward, value_cols, type
   for (j in hop_years) {
     from <- if (forward) j else j + 1L
     to <- if (forward) j + 1L else j
-    step_crosswalk <- crosswalk[crosswalk$year_from == from & crosswalk$year_to == to, , drop = FALSE]
+    step_crosswalk <- crosswalk[
+      crosswalk$year_from == from & crosswalk$year_to == to,
+      ,
+      drop = FALSE
+    ]
     if (nrow(step_crosswalk) == 0) {
       fixed_target <- unique(crosswalk$year_to)
-      if (forward && length(fixed_target) == 1L &&
-            length(unique(crosswalk$year_from)) > 1L) {
+      if (
+        forward &&
+          length(fixed_target) == 1L &&
+          length(unique(crosswalk$year_from)) > 1L
+      ) {
         # A "conversion_*" crosswalk converts straight to its fixed year and
         # cannot be chained, so the real problem is the requested target_year.
         rlang::abort(sprintf(
@@ -234,7 +313,9 @@ harmonize_path <- function(group, crosswalk, crosswalk_forward, value_cols, type
             "The crosswalk converts directly to the boundary year %d, so",
             "target_year must be %d (or \"current\"), not %d."
           ),
-          fixed_target, fixed_target, target_year
+          fixed_target,
+          fixed_target,
+          target_year
         ))
       }
       rlang::abort(sprintf(
@@ -243,17 +324,35 @@ harmonize_path <- function(group, crosswalk, crosswalk_forward, value_cols, type
           "Chaining from %d to %d is not possible - the crosswalk provided",
           "does not cover this year step."
         ),
-        from, to, start_year, target_year
+        from,
+        to,
+        start_year,
+        target_year
       ))
     }
-    current <- harmonize_step(current, step_crosswalk, value_cols, type, weight, forward)
+    current <- harmonize_step(
+      current,
+      step_crosswalk,
+      value_cols,
+      type,
+      weight,
+      forward
+    )
   }
   current
 }
 
-harmonize_step <- function(group, step_crosswalk, value_cols, type, weight, forward) {
+harmonize_step <- function(
+  group,
+  step_crosswalk,
+  value_cols,
+  type,
+  weight,
+  forward
+) {
   share_col <- paste0("share_", weight)
-  base_col <- switch(weight,
+  base_col <- switch(
+    weight,
     area = "area_old",
     population = "population_old",
     employment = "employment_old"
@@ -280,7 +379,8 @@ harmonize_step <- function(group, step_crosswalk, value_cols, type, weight, forw
   if (length(missing) > 0) {
     rlang::warn(sprintf(
       "%d AGS value(s) without a matching crosswalk entry for this transition were dropped: %s",
-      length(missing), paste(utils::head(missing, 5), collapse = ", ")
+      length(missing),
+      paste(utils::head(missing, 5), collapse = ", ")
     ))
   }
 
@@ -313,7 +413,11 @@ harmonize_step <- function(group, step_crosswalk, value_cols, type, weight, forw
 # BBSR only offers employment as a weight basis from 1997 onward; the earlier
 # crosswalk rows have NA there. Fails early instead of returning NA/NaN values.
 check_employment_available <- function(crosswalk, from_year, to_year) {
-  needed <- crosswalk[crosswalk$year_from >= from_year & crosswalk$year_to <= to_year, , drop = FALSE]
+  needed <- crosswalk[
+    crosswalk$year_from >= from_year & crosswalk$year_to <= to_year,
+    ,
+    drop = FALSE
+  ]
   if (!anyNA(needed$share_employment)) {
     return(invisible())
   }
@@ -329,7 +433,9 @@ check_employment_available <- function(crosswalk, from_year, to_year) {
       "from %d to %d. Use weight = \"population\" or \"area\", or restrict",
       "the data to later years."
     ),
-    hint, from_year, to_year
+    hint,
+    from_year,
+    to_year
   ))
 }
 
@@ -356,21 +462,36 @@ weighted_mean_or_na <- function(x, w) {
 # to 1, where it deviates by more than SHARE_SUM_TOLERANCE (groups summing to 0
 # are left as they are). Warns once for the transitions that conversion from
 # `from_year` to `to_year` passes through.
-renormalize_forward_shares <- function(crosswalk, share_col, from_year, to_year) {
+renormalize_forward_shares <- function(
+  crosswalk,
+  share_col,
+  from_year,
+  to_year
+) {
   key <- paste(crosswalk$ags_old, crosswalk$year_from, crosswalk$year_to)
-  sums <- stats::ave(crosswalk[[share_col]], key, FUN = function(x) sum(x, na.rm = TRUE))
+  sums <- stats::ave(crosswalk[[share_col]], key, FUN = function(x) {
+    sum(x, na.rm = TRUE)
+  })
   off <- !is.na(sums) & sums > 0 & abs(sums - 1) > SHARE_SUM_TOLERANCE
   if (!any(off)) {
     return(crosswalk)
   }
 
-  in_range <- off & crosswalk$year_from >= from_year & crosswalk$year_to <= to_year
+  in_range <- off &
+    crosswalk$year_from >= from_year &
+    crosswalk$year_to <= to_year
   affected <- unique(data.frame(
-    ags = crosswalk$ags_old[in_range], year_from = crosswalk$year_from[in_range],
-    year_to = crosswalk$year_to[in_range], share_sum = sums[in_range]
+    ags = crosswalk$ags_old[in_range],
+    year_from = crosswalk$year_from[in_range],
+    year_to = crosswalk$year_to[in_range],
+    share_sum = sums[in_range]
   ))
   if (nrow(affected) > 0) {
-    affected <- affected[order(affected$ags, affected$year_from), , drop = FALSE]
+    affected <- affected[
+      order(affected$ags, affected$year_from),
+      ,
+      drop = FALSE
+    ]
     shown <- utils::head(affected, 5)
     rlang::warn(sprintf(
       paste(
@@ -379,10 +500,20 @@ renormalize_forward_shares <- function(crosswalk, share_col, from_year, to_year)
         "absolute value is lost. The inconsistency is in the BBSR crosswalk,",
         "not in `data`. Affected (first %d): %s"
       ),
-      share_col, nrow(affected), SHARE_SUM_TOLERANCE, nrow(shown),
-      paste(sprintf(
-        "%s (%d -> %d, sum %.3f)", shown$ags, shown$year_from, shown$year_to, shown$share_sum
-      ), collapse = "; ")
+      share_col,
+      nrow(affected),
+      SHARE_SUM_TOLERANCE,
+      nrow(shown),
+      paste(
+        sprintf(
+          "%s (%d -> %d, sum %.3f)",
+          shown$ags,
+          shown$year_from,
+          shown$year_to,
+          shown$share_sum
+        ),
+        collapse = "; "
+      )
     ))
   }
 
