@@ -1,6 +1,6 @@
 # data-raw/ltcregio.R drops rows silently, no shape checks
 
-Status: done
+Status: ready-for-human
 Category: enhancement
 
 Found in review of commit b0e071a (`data-raw/ltcregio.R`).
