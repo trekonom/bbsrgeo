@@ -5,6 +5,26 @@
 # Usage: Rscript dev/test-all.R
 res <- as.data.frame(testthat::test_local(".", stop_on_failure = TRUE))
 
+# A test file that gets much slower is a performance regression the tests do
+# not catch: a grouped dplyr::mutate() once took test-crosswalk-read.R from
+# about 50 s to 230 s. The slowest file measures about 50 s.
+MAX_FILE_SECONDS <- 120
+elapsed <- tapply(res$real, res$file, sum)
+slowest <- utils::head(sort(elapsed, decreasing = TRUE), 3)
+message(
+  "\nSlowest test files: ",
+  paste(sprintf("%s %.0f s", names(slowest), slowest), collapse = ", ")
+)
+if (any(elapsed > MAX_FILE_SECONDS)) {
+  stop(
+    "A test file took longer than ",
+    MAX_FILE_SECONDS,
+    " s: ",
+    paste(names(elapsed)[elapsed > MAX_FILE_SECONDS], collapse = ", "),
+    ". Check for per-group evaluation over the ~150k crosswalk groups."
+  )
+}
+
 skipped <- res[res$skipped, c("file", "test")]
 if (nrow(skipped) > 0) {
   message("\nSkipped tests (these did not run):")
