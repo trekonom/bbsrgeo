@@ -148,22 +148,70 @@ valid_ags_by_year <- c(
   )
 )
 
-## population_total and state: reused from the already-bundled, already-
-## cleaned `popregio` dataset (denominator for care_rate, and the state
-## lookup), rather than re-deriving either from a second RDB source or
-## re-declaring the state-prefix map a second time.
-ltcregio <- ltc_districts |>
+## Row loss in the two steps below is never silent: a row that the valid-AGS
+## filter or the join with `popregio` removes aborts the build and names the
+## AGS and years, unless it is listed here. Nothing is expected to be dropped
+## (the Berlin DLAND patch is applied before these steps and needs no entry);
+## if a run shows a genuine drop, add the row to `expected_drops` with a
+## comment saying why.
+expected_drops <- tibble::tibble(ags = character(), year = integer())
+
+abort_on_drops <- function(before, after, step) {
+  dropped <- dplyr::anti_join(before, after, by = c("ags", "year")) |>
+    dplyr::anti_join(expected_drops, by = c("ags", "year"))
+  if (nrow(dropped) > 0) {
+    stop(
+      sprintf(
+        "%s dropped %d unexpected row(s): %s",
+        step,
+        nrow(dropped),
+        paste(
+          sprintf("%s (%d)", dropped$ags, dropped$year),
+          collapse = ", "
+        )
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(after)
+}
+
+## A year without a valid-AGS entry would make `%in%` FALSE for every row of
+## that year; abort instead of dropping the year.
+missing_years <- setdiff(
+  unique(ltc_districts$year),
+  as.integer(names(valid_ags_by_year))
+)
+if (length(missing_years) > 0) {
+  stop(
+    "No valid-AGS entry for year(s): ",
+    paste(sort(missing_years), collapse = ", "),
+    call. = FALSE
+  )
+}
+
+ltc_valid <- ltc_districts |>
   filter(
     purrr::map2_lgl(
       .data$ags,
       .data$year,
       \(ags, year) ags %in% valid_ags_by_year[[as.character(year)]]
     )
-  ) |>
+  )
+abort_on_drops(ltc_districts, ltc_valid, "The valid-AGS filter")
+
+## population_total and state: reused from the already-bundled, already-
+## cleaned `popregio` dataset (denominator for care_rate, and the state
+## lookup), rather than re-deriving either from a second RDB source or
+## re-declaring the state-prefix map a second time.
+ltc_joined <- ltc_valid |>
   inner_join(
     select(popregio, "ags", "year", "state", "population_total"),
     by = c("ags", "year")
-  ) |>
+  )
+abort_on_drops(ltc_valid, ltc_joined, "The join with popregio")
+
+ltcregio <- ltc_joined |>
   mutate(care_rate = .data$pflegebeduerftige / .data$population_total * 100) |>
   select(
     "ags",
@@ -175,5 +223,39 @@ ltcregio <- ltc_districts |>
     "care_rate"
   ) |>
   arrange(.data$state, .data$ags, .data$year)
+
+## Shape of the result. District counts are those of each year's HISTORICAL
+## boundary (not a flat 400): they equal popregio's counts for the same years
+## (412 / 402 / 402 / 402 / 401 / 401 / 400 / 400 at the time of writing).
+stopifnot(
+  "ltcregio years are not 2009, 2011, ..., 2023" = identical(
+    sort(unique(ltcregio$year)),
+    seq(2009L, 2023L, by = 2L)
+  ),
+  "ltcregio has NA values" = !anyNA(ltcregio),
+  "ltcregio has duplicate ags/year pairs" = !anyDuplicated(ltcregio[c(
+    "ags",
+    "year"
+  )])
+)
+expected_counts <- popregio |>
+  filter(.data$year %in% unique(ltcregio$year)) |>
+  count(.data$year)
+actual_counts <- count(ltcregio, .data$year)
+if (!isTRUE(all.equal(expected_counts, actual_counts))) {
+  stop(
+    "ltcregio district counts per year differ from popregio's: ",
+    paste(
+      sprintf(
+        "%d: %d vs %d",
+        expected_counts$year,
+        actual_counts$n[match(expected_counts$year, actual_counts$year)],
+        expected_counts$n
+      ),
+      collapse = "; "
+    ),
+    call. = FALSE
+  )
+}
 
 usethis::use_data(ltcregio, overwrite = TRUE)

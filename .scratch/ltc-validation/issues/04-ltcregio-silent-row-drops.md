@@ -1,6 +1,6 @@
 # data-raw/ltcregio.R drops rows silently, no shape checks
 
-Status: ready-for-human
+Status: done
 Category: enhancement
 
 Found in review of commit b0e071a (`data-raw/ltcregio.R`).
@@ -46,3 +46,17 @@ The build script discards rows without notice in two places: the valid-AGS filte
 - `data-raw/ltcinkar.R` input validation (issue 06) and the ltc test skip/exclusion handling (issue 05).
 - Changing which years or districts `ltcregio` covers.
 - Adding automated tests for `data-raw/` scripts.
+
+## Resolution
+
+`data-raw/ltcregio.R` now aborts, naming the AGS and years, on a year missing
+from the valid-AGS lookup and on any row dropped by the valid-AGS filter or the
+join with `popregio` (explicit `expected_drops` allow-list, empty), and asserts
+the final shape (years 2009-2023 in steps of 2, no NA, unique `ags`/`year`,
+per-year district counts equal to `popregio`'s). Verified offline only: the
+post-fetch part of the script, run on a table rebuilt from the bundled
+`ltcregio`, reproduces it exactly (`all.equal`) and aborts with the expected
+message for a removed year, a removed `popregio` row and an unknown AGS. The
+full build against GENESIS-Regio was not run (needs credentials): a human still
+has to run it once; if it aborts on a genuine drop, add the row to
+`expected_drops` with the reason.
