@@ -40,9 +40,7 @@ Tests that hit the live BBSR site or require network access are guarded with
 The package has two independent halves that compose through one shared data
 shape (the crosswalk tibble):
 
-1. **Acquiring a crosswalk** (`R/crosswalk-available.R`,
-   `R/crosswalk-available-live.R`, `R/crosswalk-download.R`,
-   `R/crosswalk-read.R`, `R/crosswalk-checks.R`, `R/share-deviations.R`):
+1. **Acquiring a crosswalk** (`R/crosswalk-*.R`):
    - `bbsr_crosswalk_available()` looks up a static table of known BBSR xlsx
      files, bundled in `R/sysdata.rda` (built by
      `data-raw/bbsr_crosswalk_urls.R`). `bbsr_crosswalk_available_live()` is
@@ -51,25 +49,25 @@ shape (the crosswalk tibble):
    - `bbsr_crosswalk_download()` fetches and caches the xlsx file(s) under
      `tools::R_user_dir("bbsrgeo", "cache")`.
    - `bbsr_crosswalk_read()` parses the xlsx sheets into one long tibble with
-     columns `ags_old`, `ags_new`, `year_from`, `year_to`,
+     columns `ags_old`, `ags_new`, `year_from`, `year_to`, `level`,
      `share_area`/`share_population`/`share_employment`, and the
      corresponding absolute `*_old` values. It infers `level`/`kind` from the
      (German) file name and sheet names, and warns if a given
      `ags_old`/`year_from` combination's shares don't sum to ~1 — this is a
      known upstream BBSR data-quality issue, not a bug in this package. The
-     read-time checks are in `R/crosswalk-checks.R`; they and the renormalization
-     in `harmonize_regions()` ask `R/share-deviations.R` which transition
-     groups deviate and which treatment applies (`classify_share_deviations()`).
+     read-time checks and the renormalization in `harmonize_regions()` both ask
+     `classify_share_deviations()` which transition groups deviate and which
+     treatment applies.
    - The real files have up to ~150k `ags_old`/transition groups. Evaluating
      R code per group is slow at that size: a `map_dfr` over groups exceeds
      the 2-minute tool timeout, and a grouped `dplyr::mutate()` with several
      expressions made `test-crosswalk-read.R` about 4.5x slower than `ave()`
      (measured 2026-10-24). A group id with `rowsum()` and sorting is as fast
-     as `ave()` (see `R/share-deviations.R`).
+     as `ave()` (see `transition_group_ids()` and `group_sum()`).
 
-2. **Applying a crosswalk** (`R/harmonize-regions.R`, `R/conversion-path.R`,
-   `R/check-regions.R`; `conversion-path.R` holds the transitions a conversion
-   passes through and the unmapped-unit rule, shared by the other two):
+2. **Applying a crosswalk**. `conversion_steps()` plans the transitions a
+   conversion passes through and holds the unmapped-unit rule, shared by
+   `harmonize_regions()` and `check_regions()` so the two cannot disagree:
    - `harmonize_regions()` takes a long panel dataset
      (AGS + year + value column(s)) and re-expresses it on one target-year
      boundary. For `"annual"` crosswalks it chains single-year transitions
@@ -86,7 +84,7 @@ shape (the crosswalk tibble):
      the conversion would drop as unmapped units.
 
 AGS (Amtlicher Gemeindeschluessel) handling is centralized in
-`normalize_ags()` (`R/utils.R`): BBSR xlsx cells are inconsistently
+`normalize_ags()`: BBSR xlsx cells are inconsistently
 text/numeric, and federal states "01"–"09" lose their leading zero once
 read as a number — this function re-pads everything to a consistent 8-digit
 string. Any new code path that reads AGS values from a file should go
