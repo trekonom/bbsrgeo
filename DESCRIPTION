@@ -41,3 +41,5 @@ VignetteBuilder: knitr
 Depends:
     R (>= 4.1)
 LazyData: true
+URL: https://github.com/trekonom/bbsrgeo
+BugReports: https://github.com/trekonom/bbsrgeo/issues
