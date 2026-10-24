@@ -1,6 +1,6 @@
 # Recompute shares from the absolute values instead of trusting the shares columns?
 
-Status: needs-triage
+Status: wontfix
 Category: enhancement
 
 Raised by the maintainer while triaging crosswalk-read-municipal issue 06
@@ -109,3 +109,7 @@ plus single-row groups below 1 (07135000, 07137000), which renormalization
 already maps to 1.
 
 Open for the maintainer: item 1 (which option) and item 5 (ADR).
+
+Decision (maintainer): keep the shares; do not recompute from the counts.
+Recorded in `docs/adr/0001-use-crosswalk-shares-not-recomputed-from-counts.md`.
+The detection of wrong shares that sum to 1 is split off as issue 02.
