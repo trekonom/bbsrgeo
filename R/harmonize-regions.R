@@ -24,13 +24,15 @@
 #' self-mapping rows with `share_population` 0.017 for 07137000 in
 #' 2014 -> 2015), the shares are renormalized to sum to 1, so no part of a
 #' count is lost, and a warning names the affected AGS and transitions. The
-#' deviation is in the crosswalk, not in `data`. An exception is a source unit
-#' without population (or employment, for `weight = "employment"`), e.g.
-#' a municipality-free area: in the BBSR crosswalks such a unit has a count of
-#' 0 and a share of 1 on every target row (e.g. 09671456, 2020), which looks
-#' like a convention for an undefined share (not documented by BBSR;
-#' unverified). Such a unit is split by area share instead, without a
-#' warning. `type = "ratio"` is not
+#' deviation is in the crosswalk, not in `data`. Two exceptions apply, both
+#' without a warning. First, where the counts of a source unit
+#' (`population_old`, `area_old` or `employment_old` in the crosswalk) are
+#' all observed, differ between its target rows and have a positive total,
+#' they are read as the parts going to each target and the shares become
+#' count / total. Second, a source unit without population (or employment, for
+#' `weight = "employment"`), e.g. a municipality-free area, has a count of 0
+#' and a share of 1 on every target row in the BBSR crosswalks (e.g. 09671456,
+#' 2020), which cannot be a split; it is split by area share instead. `type = "ratio"` is not
 #' affected (its weights are normalized anyway), and backcasting is left as
 #' is, since shares are not expected to sum to 1 per `ags_new`.
 #'
@@ -487,28 +489,31 @@ weighted_mean_or_na <- function(x, w) {
   stats::weighted.mean(x, w = w, na.rm = TRUE)
 }
 
-# Renormalizes `share_col` per ags_old/year_from/year_to so that each group sums
-# to 1, where it deviates by more than SHARE_SUM_TOLERANCE (groups summing to 0
-# are left as they are). A group whose weight basis (`<weight>_old`) is 0 for
-# every row is a unit without population/employment: the crosswalks give it
-# a share of 1 on every target row (e.g. 09671456, 2020; apparently a
-# convention for an undefined share, unverified). Such a group is split by area
-# share instead, without a warning. Warns once for the other renormalized
-# transitions that conversion from `from_year` to `to_year` passes through.
+# Corrects `share_col` per ags_old/year_from/year_to where the group's shares
+# deviate from a sum of 1 by more than SHARE_SUM_TOLERANCE (groups summing to 0
+# are left as they are). In order, for a group with a weight basis column
+# (`<weight>_old`):
+# 1. Basis observed and 0 on every row (a unit without population/employment):
+#    the crosswalks give it a share of 1 on every target row (observed, e.g.
+#    09671456, 2020; see .scratch/crosswalk-read-municipal issue 05), which
+#    cannot be a split. Split by area share instead (not for weight = "area").
+# 2. Basis observed on every row, differing between rows, positive total: read
+#    as the parts going to each target (observed, e.g. 12039430, 1992, whose
+#    count shares are 0.30 / 0.70; see issue 05), so the shares are
+#    count / total.
+# 3. Otherwise (e.g. the unit's total repeated on every row): renormalized to
+#    sum to 1.
+# Only case 3 warns, once, for the transitions that conversion from `from_year`
+# to `to_year` passes through.
 renormalize_forward_shares <- function(
   crosswalk,
   share_col,
   from_year,
   to_year
 ) {
+  group_key <- paste(crosswalk$ags_old, crosswalk$year_from, crosswalk$year_to)
   group_sum <- function(x) {
-    stats::ave(
-      x,
-      paste(crosswalk$ags_old, crosswalk$year_from, crosswalk$year_to),
-      FUN = function(v) {
-        sum(v, na.rm = TRUE)
-      }
-    )
+    stats::ave(x, group_key, FUN = function(v) sum(v, na.rm = TRUE))
   }
   sums <- group_sum(crosswalk[[share_col]])
   off <- !is.na(sums) & sums > 0 & abs(sums - 1) > SHARE_SUM_TOLERANCE
@@ -517,16 +522,41 @@ renormalize_forward_shares <- function(
   }
 
   basis_col <- paste0(sub("^share_", "", share_col), "_old")
-  if (share_col != "share_area" && basis_col %in% names(crosswalk)) {
-    # A missing basis (NA) is not a zero basis: only observed zeros count.
+  if (basis_col %in% names(crosswalk)) {
+    # A missing basis (NA) is neither zero nor a part: only observed values count.
     basis <- crosswalk[[basis_col]]
     basis_sums <- group_sum(basis)
-    basis_observed <- group_sum(as.numeric(!is.na(basis)))
+    all_observed <- group_sum(as.numeric(is.na(basis))) == 0
+    # Equal counts cannot be told from the unit's total repeated on every row,
+    # so they are not read as parts (case 3); neither are rounding-noise
+    # differences.
+    varies <- stats::ave(basis, group_key, FUN = function(v) {
+      diff(range(v)) > 1e-8 * max(abs(v))
+    }) ==
+      1
+    non_negative <- stats::ave(basis, group_key, FUN = function(v) {
+      all(v >= 0)
+    }) ==
+      1
     area_sums <- group_sum(crosswalk$share_area)
-    zero_basis <- off & basis_observed > 0 & basis_sums == 0 & area_sums > 0
+
+    zero_basis <- off &
+      all_observed &
+      basis_sums == 0 &
+      share_col != "share_area" &
+      area_sums > 0
     crosswalk[[share_col]][zero_basis] <- crosswalk$share_area[zero_basis] /
       area_sums[zero_basis]
-    off <- off & !zero_basis
+
+    parts <- off &
+      !zero_basis &
+      all_observed &
+      varies &
+      non_negative &
+      basis_sums > 0
+    crosswalk[[share_col]][parts] <- basis[parts] / basis_sums[parts]
+
+    off <- off & !zero_basis & !parts
     if (!any(off)) {
       return(crosswalk)
     }

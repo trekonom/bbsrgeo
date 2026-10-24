@@ -1,6 +1,6 @@
 # Municipal files: share sums of 2 to 11 for ...444 codes
 
-Status: needs-triage
+Status: done
 Category: bug
 
 Follow-up from issue 01 (municipal crosswalk reading, commit 1f98881). Found
@@ -21,22 +21,35 @@ Population share sums per `ags_old`/`year_from` are far above 1 for a set of cod
 
 Changing the share-sum warning wording; correcting the BBSR data itself.
 
-## Resolution (question 3)
+## Resolution
 
-`renormalize_forward_shares()` (`R/harmonize-regions.R`): for
-`type = "absolute"`, a group whose weight basis (`population_old` /
-`employment_old`) is observed and 0 on every row is split by area share
-(normalized to 1), with no warning and no renormalization of its
-population/employment share. Other off-1 groups are renormalized and warned
-about as before (ltc-validation 07). An all-NA basis is not a zero basis, and a
-missing `*_old` column skips the fallback. For `weight = "area"` there is no
-fallback (area is the basis): a zero-area group is still renormalized with a
-warning. Documented in the roxygen of `harmonize_regions()`.
+Cause of the zero-population cases (maintainer's observation, confirmed in the
+counts columns): units without population have `population_old` = 0 and a
+share of 1 on every target row. That the shares of these units are a BBSR
+convention for an undefined share was a guess and is not claimed in the docs.
 
-Real municipal files, `renormalize_forward_shares(share_population)`:
-2000-2010, 2010-2020, 2020-2024: no warning (before: 33 and 1 combinations);
-1990-2000: still 4 combinations (01060102, 12039430, 12043470, 15321210), the
-non-zero cases. Not checked whether those four follow the same convention, so
-they are still renormalized and warned about.
+Recomputing all shares from the counts was rejected after checking the five
+crosswalk files (four municipal, one district), split groups only: in 25 of 27 split groups of the 2020-2024
+municipal file (and some 2010-2020 groups) `area_old`/`population_old` is the
+unit's total repeated on each row, so part sizes are not in the file; where
+counts are parts, the shares already equal count / total; the 1990-2000
+population counts look rounded to one decimal (unit not verified), so they are
+less precise than the shares. Counts are used only for off-1 groups, and only when they are all observed, non-negative, differ between rows and have a positive total; equal counts are not read as parts, since they cannot be told from the unit's total repeated on every row (those groups are renormalized with a warning). The rule also applies to `area_old` and `employment_old` for the matching weight; this is untested on real data beyond the cases above.
+
+`renormalize_forward_shares()` (`R/harmonize-regions.R`), `type = "absolute"`,
+for a group whose shares sum off 1 and which has a `<weight>_old` column:
+1. Basis observed and 0 on every row: split by area share, no warning (not
+   for `weight = "area"`).
+2. Basis observed on every row, differing between rows, positive total: the
+   counts are the parts; shares become count / total, no warning. This covers
+   the four 1990-2000 cases (01060102, 12039430, 12043470, 15321210), e.g.
+   12039430 goes from 1 / 1 to 0.304 / 0.696.
+3. Otherwise renormalized to sum to 1 with a warning, as in ltc-validation 07.
+An all-NA basis is not a zero basis; a missing `*_old` column skips 1 and 2.
+Documented in the roxygen of `harmonize_regions()`.
+
+Real municipal files, `renormalize_forward_shares(share_population)`: no
+warning for any of the four municipal files (before: 5, 0, 33 and 1 combinations). The
+district crosswalk still warns for 07135000/07137000 (single-row groups).
 
 ## Comments

@@ -558,8 +558,8 @@ test_that("renormalization warns once, naming the affected AGS, the transition a
 
 # A unit without inhabitants has share_population 1 on every target row in the
 # BBSR crosswalks (e.g. 09671456 Rohrbrunner Forst, 2020: population_old 0,
-# share_population 1 / 1 / 1, share_area 0.01 / 0.49 / 0.50), apparently a
-# convention for the undefined 0 / 0 share (unverified), not a crosswalk error.
+# share_population 1 / 1 / 1, share_area 0.01 / 0.49 / 0.50): a share of 1 on
+# every target row cannot be a split.
 zero_population_split <- function() {
   dplyr::bind_rows(
     crosswalk_row(
@@ -711,6 +711,193 @@ test_that("a zero-employment source unit is split by area share under weight = '
   ))
   expect_equal(res$value[res$ags == "01000002"], 25)
   expect_equal(res$value[res$ags == "01000003"], 75)
+})
+
+# Four municipalities in the 1990-2000 file (e.g. 12039430 Schoenermark, 1992)
+# have share_population 1 on every target row although their counts are
+# non-zero and differ by row (0.21 / 0.48), read here as the parts going to each
+# target (observed in the file, see .scratch/crosswalk-read-municipal issue 05).
+test_that("off-1 shares are replaced by count shares when the counts are the parts", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row(
+      "01000001",
+      "01000002",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = 300
+    ),
+    crosswalk_row(
+      "01000001",
+      "01000003",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = 700
+    )
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, value = 100)
+
+  res <- expect_no_warning(harmonize_regions(
+    data,
+    crosswalk,
+    "ags",
+    "year",
+    "value",
+    type = "absolute",
+    weight = "population",
+    target_year = 2021L,
+    level = "districts"
+  ))
+  expect_equal(res$value[res$ags == "01000002"], 30)
+  expect_equal(res$value[res$ags == "01000003"], 70)
+})
+
+test_that("off-1 shares are renormalized, with a warning, when the count is the unit's total on every row", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row(
+      "01000001",
+      "01000002",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = 1000
+    ),
+    crosswalk_row(
+      "01000001",
+      "01000003",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = 1000
+    )
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, value = 100)
+
+  # Expected warning: the crosswalk's share_population do not sum to 1.
+  res <- suppressWarnings(harmonize_regions(
+    data,
+    crosswalk,
+    "ags",
+    "year",
+    "value",
+    type = "absolute",
+    weight = "population",
+    target_year = 2021L,
+    level = "districts"
+  ))
+  expect_equal(res$value[res$ags == "01000002"], 50)
+  expect_equal(res$value[res$ags == "01000003"], 50)
+})
+
+test_that("count shares also apply under weight = 'area'", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row(
+      "01000001",
+      "01000002",
+      2020L,
+      2021L,
+      share_area = 1,
+      area_old = 25
+    ),
+    crosswalk_row(
+      "01000001",
+      "01000003",
+      2020L,
+      2021L,
+      share_area = 1,
+      area_old = 75
+    )
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, value = 100)
+
+  res <- expect_no_warning(harmonize_regions(
+    data,
+    crosswalk,
+    "ags",
+    "year",
+    "value",
+    type = "absolute",
+    weight = "area",
+    target_year = 2021L,
+    level = "districts"
+  ))
+  expect_equal(res$value[res$ags == "01000002"], 25)
+  expect_equal(res$value[res$ags == "01000003"], 75)
+})
+
+test_that("equal counts are not read as parts: they may be the unit's total repeated", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row(
+      "01000001",
+      "01000002",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = 500
+    ),
+    crosswalk_row(
+      "01000001",
+      "01000003",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = 500
+    )
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, value = 100)
+
+  # Expected warning: the crosswalk's share_population do not sum to 1.
+  res <- suppressWarnings(harmonize_regions(
+    data,
+    crosswalk,
+    "ags",
+    "year",
+    "value",
+    type = "absolute",
+    weight = "population",
+    target_year = 2021L,
+    level = "districts"
+  ))
+  expect_equal(res$value[res$ags == "01000002"], 50)
+  expect_equal(res$value[res$ags == "01000003"], 50)
+})
+
+test_that("a partly missing population count is not read as parts", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row(
+      "01000001",
+      "01000002",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = 300
+    ),
+    crosswalk_row(
+      "01000001",
+      "01000003",
+      2020L,
+      2021L,
+      share_population = 1,
+      population_old = NA
+    )
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, value = 100)
+
+  # Expected warning: the crosswalk's share_population do not sum to 1.
+  res <- suppressWarnings(harmonize_regions(
+    data,
+    crosswalk,
+    "ags",
+    "year",
+    "value",
+    type = "absolute",
+    weight = "population",
+    target_year = 2021L,
+    level = "districts"
+  ))
+  expect_equal(res$value[res$ags == "01000002"], 50)
+  expect_equal(res$value[res$ags == "01000003"], 50)
 })
 
 test_that("a missing population count is not treated as zero population", {

@@ -103,13 +103,15 @@ deviate by more than 0.01 (e.g. BBSR's annual districts crosswalk has
 self-mapping rows with \code{share_population} 0.017 for 07137000 in
 2014 -> 2015), the shares are renormalized to sum to 1, so no part of a
 count is lost, and a warning names the affected AGS and transitions. The
-deviation is in the crosswalk, not in \code{data}. An exception is a source unit
-without population (or employment, for \code{weight = "employment"}), e.g.
-a municipality-free area: in the BBSR crosswalks such a unit has a count of
-0 and a share of 1 on every target row (e.g. 09671456, 2020), which looks
-like a convention for an undefined share (not documented by BBSR;
-unverified). Such a unit is split by area share instead, without a
-warning. \code{type = "ratio"} is not
+deviation is in the crosswalk, not in \code{data}. Two exceptions apply, both
+without a warning. First, where the counts of a source unit
+(\code{population_old}, \code{area_old} or \code{employment_old} in the crosswalk) are
+all observed, differ between its target rows and have a positive total,
+they are read as the parts going to each target and the shares become
+count / total. Second, a source unit without population (or employment, for
+\code{weight = "employment"}), e.g. a municipality-free area, has a count of 0
+and a share of 1 on every target row in the BBSR crosswalks (e.g. 09671456,
+2020), which cannot be a split; it is split by area share instead. \code{type = "ratio"} is not
 affected (its weights are normalized anyway), and backcasting is left as
 is, since shares are not expected to sum to 1 per \code{ags_new}.
 
