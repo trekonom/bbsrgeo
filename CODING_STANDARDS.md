@@ -22,8 +22,9 @@ not apply the Cochem-Zell transfer" wording this rule replaces
 ## Tests
 
 - Match the sibling test file's shape (`test-validate-inkar.R`). A shared
-  helper needs a reason beyond tidiness; if two tests call it, each reruns
-  the work.
+  helper that does expensive work (a download, a file read, a conversion)
+  needs a reason beyond tidiness: if two tests call it, each reruns the work.
+  A helper that only builds a small constructed tibble is fine.
 - Keep `suppressWarnings()` around the one call that emits the known
   warning, with a comment naming the warning.
 - Give a value that appears in two places (year range, district code,
