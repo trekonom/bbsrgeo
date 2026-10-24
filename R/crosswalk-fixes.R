@@ -30,9 +30,10 @@ crosswalk_fixes <- tibble::tibble(
 #' `R/crosswalk-fixes.R`.
 #'
 #' A fix applies only when exactly one row matches its transition, codes and
-#' name. If the crosswalk contains the fix's transition but no single matching
-#' row (e.g. BBSR corrected the file), the fix is not applied and the message
-#' says so.
+#' name. If the crosswalk contains the fix's transition and codes but no single
+#' matching row (e.g. BBSR corrected the file), the fix is not applied and the
+#' message says so. A crosswalk without them (e.g. a municipal file) is left
+#' alone, silently.
 #'
 #' @param crosswalk A crosswalk tibble as returned by [bbsr_crosswalk_read()].
 #' @return `crosswalk` with the fixes applied. A message names each fix that
@@ -43,17 +44,17 @@ bbsr_crosswalk_fix <- function(crosswalk) {
   lines <- character()
   for (i in seq_len(nrow(fixes))) {
     fix <- fixes[i, ]
-    in_transition <- crosswalk$year_from == fix$year_from &
-      crosswalk$year_to == fix$year_to
-    if (!any(in_transition)) {
+    # Relevant where the crosswalk has the fix's transition and both codes: the
+    # crosswalk has no level column, and municipal files share the transitions
+    # of the district file.
+    relevant <- crosswalk$year_from == fix$year_from &
+      crosswalk$year_to == fix$year_to &
+      crosswalk$ags_old == fix$ags_old &
+      crosswalk$ags_new == fix$ags_new
+    if (!any(relevant)) {
       next
     }
-    matches <- which(
-      in_transition &
-        crosswalk$ags_old == fix$ags_old &
-        crosswalk$name_old == fix$name_old &
-        crosswalk$ags_new == fix$ags_new
-    )
+    matches <- which(relevant & crosswalk$name_old == fix$name_old)
     label <- sprintf(
       "%s '%s' -> '%s' (%d -> %d, %s)",
       fix$column,

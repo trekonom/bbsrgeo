@@ -22,7 +22,8 @@ default (\code{fix = TRUE}). Each fix is listed with its evidence in
 }
 \details{
 A fix applies only when exactly one row matches its transition, codes and
-name. If the crosswalk contains the fix's transition but no single matching
-row (e.g. BBSR corrected the file), the fix is not applied and the message
-says so.
+name. If the crosswalk contains the fix's transition and codes but no single
+matching row (e.g. BBSR corrected the file), the fix is not applied and the
+message says so. A crosswalk without them (e.g. a municipal file) is left
+alone, silently.
 }
