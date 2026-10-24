@@ -119,12 +119,18 @@ regional_data
 
 ## Checking before conversion
 
-`check_regions()` shows whether all AGS values present are known to the
-crosswalk - so typos or gaps become visible before they silently cause data
-loss in the conversion:
+`check_regions()` shows which rows the conversion would drop because the
+crosswalk has no entry for their AGS - so typos or gaps become visible before
+they cause data loss in the conversion:
 
 ```{r}
-check_regions(regional_data, crosswalk, ags_col = "ags")
+check_regions(
+  regional_data,
+  crosswalk,
+  ags_col = "ags",
+  year_col = "year",
+  target_year = 2021L
+)
 ```
 
 ## Converting to a consistent boundary

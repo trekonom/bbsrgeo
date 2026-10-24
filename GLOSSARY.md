@@ -71,7 +71,7 @@ How far `count / total` of a row lies from its share in a transition group whose
 _Avoid_: count error, mismatch
 
 **Unmapped unit**:
-An area unit in the data with no crosswalk entry for a transition. Always dropped with a warning, never passed through.
+An area unit in the data with no crosswalk entry for a transition. Always dropped with a warning, never passed through. `check_regions()` reports the rows this rule would drop, following the same transitions as `harmonize_regions()` (`R/conversion-path.R`).
 _Avoid_: missing unit, orphan
 
 ### Variables

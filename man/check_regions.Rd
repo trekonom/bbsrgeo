@@ -4,7 +4,14 @@
 \alias{check_regions}
 \title{Check regional data for compatibility with a crosswalk}
 \usage{
-check_regions(data, crosswalk, ags_col, year_col = NULL)
+check_regions(
+  data,
+  crosswalk,
+  ags_col,
+  year_col,
+  target_year,
+  allow_backcast = FALSE
+)
 }
 \arguments{
 \item{data}{A dataset with an AGS column and a year column.}
@@ -13,19 +20,32 @@ check_regions(data, crosswalk, ags_col, year_col = NULL)
 
 \item{ags_col}{Name of the AGS column in \code{data}.}
 
-\item{year_col}{Optional name of a year column in \code{data}. If given, also
-checks whether a transition exists in the crosswalk for the respective
-year at all.}
+\item{year_col}{Name of the year column in \code{data}.}
+
+\item{target_year}{Target year of the boundary, or \code{"current"}, as in
+\code{\link[=harmonize_regions]{harmonize_regions()}}.}
+
+\item{allow_backcast}{Allow backcasting, as in \code{\link[=harmonize_regions]{harmonize_regions()}}.
+Default \code{FALSE}.}
 }
 \value{
-Invisibly, the rows from \code{data} whose AGS was not found in the
-crosswalk (0 rows if everything matched). A summary is printed as a
-message.
+Invisibly, the rows from \code{data} that would be dropped (0 rows if
+everything maps). A summary is printed as a message.
 }
 \description{
-Checks whether all AGS values occurring in \code{data} are present in the
-crosswalk as \code{ags_old}, and reports missing or unmatched values (e.g.
-typos or years outside the covered time span). Useful as a preliminary
-step before \code{\link[=harmonize_regions]{harmonize_regions()}}, to surface data loss from a silent
-\code{inner_join} filter early.
+Reports the rows of \code{data} that \code{\link[=harmonize_regions]{harmonize_regions()}} would drop as
+unmapped units when converting to \code{target_year}: an area unit the crosswalk
+has no entry for in a transition the conversion passes through, in every
+year including \code{target_year} (see Details of \code{\link[=harmonize_regions]{harmonize_regions()}}). It
+follows the same transitions as the conversion, chaining year-to-year
+crosswalks where needed, but looks at the area units only, so no values are
+needed and nothing is converted. Useful as a preliminary step, to surface
+data loss early.
+}
+\details{
+A row is reported if any part of its value is lost, also when the unit maps
+at the first transition but one of its targets has no entry at a later one.
+A path the crosswalk cannot cover, or a backcast without
+\code{allow_backcast = TRUE}, is an error with the same message as in
+\code{\link[=harmonize_regions]{harmonize_regions()}}.
 }

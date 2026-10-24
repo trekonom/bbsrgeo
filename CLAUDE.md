@@ -67,7 +67,9 @@ shape (the crosswalk tibble):
      (measured 2026-10-24). A group id with `rowsum()` and sorting is as fast
      as `ave()` (see `R/share-deviations.R`).
 
-2. **Applying a crosswalk** (`R/harmonize-regions.R`, `R/check-regions.R`):
+2. **Applying a crosswalk** (`R/harmonize-regions.R`, `R/conversion-path.R`,
+   `R/check-regions.R`; `conversion-path.R` holds the transitions a conversion
+   passes through and the unmapped-unit rule, shared by the other two):
    - `harmonize_regions()` (dispatches to `harmonize_regions_districts()` /
      `harmonize_regions_municipalities()`) takes a long panel dataset
      (AGS + year + value column(s)) and re-expresses it on one target-year

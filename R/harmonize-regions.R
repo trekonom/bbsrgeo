@@ -212,11 +212,7 @@ harmonize_regions_impl <- function(
     all(value_cols %in% names(data))
   )
 
-  target_year_resolved <- if (identical(target_year, "current")) {
-    max(crosswalk$year_to, na.rm = TRUE)
-  } else {
-    as.integer(target_year)
-  }
+  target_year_resolved <- resolve_target_year(target_year, crosswalk)
 
   base <- tibble::tibble(
     ..ags = normalize_ags(data[[ags_col]]),
@@ -281,20 +277,14 @@ harmonize_path <- function(
   }
 
   forward <- start_year < target_year
+  steps <- conversion_steps(
+    if (forward) crosswalk_forward else crosswalk,
+    start_year,
+    target_year,
+    allow_backcast
+  )
 
   if (!forward) {
-    if (!allow_backcast) {
-      rlang::abort(sprintf(
-        paste(
-          "Year %d is after the target boundary year %d (this would be a",
-          "backcast/disaggregation onto an older boundary). BBSR crosswalks",
-          "are designed for forward conversion; backcasting is more",
-          "error-prone. Enable explicitly with allow_backcast = TRUE."
-        ),
-        start_year,
-        target_year
-      ))
-    }
     rlang::warn(paste(
       "Backcasting (disaggregation from a newer to an older boundary) is",
       "experimental and carries a higher estimation error than the forward",
@@ -302,73 +292,9 @@ harmonize_path <- function(
     ))
   }
 
-  crosswalk <- if (forward) crosswalk_forward else crosswalk
-
-  direct <- crosswalk[
-    crosswalk$year_from == (if (forward) start_year else target_year) &
-      crosswalk$year_to == (if (forward) target_year else start_year),
-    ,
-    drop = FALSE
-  ]
-
-  if (nrow(direct) > 0) {
-    return(harmonize_step(group, direct, value_cols, type, weight, forward))
-  }
-
-  hop_years <- if (forward) {
-    seq(start_year, target_year - 1L)
-  } else {
-    seq(start_year - 1L, target_year, by = -1L)
-  }
-
   current <- group
-  for (j in hop_years) {
-    from <- if (forward) j else j + 1L
-    to <- if (forward) j + 1L else j
-    step_crosswalk <- crosswalk[
-      crosswalk$year_from == from & crosswalk$year_to == to,
-      ,
-      drop = FALSE
-    ]
-    if (nrow(step_crosswalk) == 0) {
-      fixed_target <- unique(crosswalk$year_to)
-      if (
-        forward &&
-          length(fixed_target) == 1L &&
-          length(unique(crosswalk$year_from)) > 1L
-      ) {
-        # A "conversion_*" crosswalk converts straight to its fixed year and
-        # cannot be chained, so the real problem is the requested target_year.
-        rlang::abort(sprintf(
-          paste(
-            "The crosswalk converts directly to the boundary year %d, so",
-            "target_year must be %d (or \"current\"), not %d."
-          ),
-          fixed_target,
-          fixed_target,
-          target_year
-        ))
-      }
-      rlang::abort(sprintf(
-        paste(
-          "No crosswalk found for the %d -> %d transition.",
-          "Chaining from %d to %d is not possible - the crosswalk provided",
-          "does not cover this year step."
-        ),
-        from,
-        to,
-        start_year,
-        target_year
-      ))
-    }
-    current <- harmonize_step(
-      current,
-      step_crosswalk,
-      value_cols,
-      type,
-      weight,
-      forward
-    )
+  for (step in steps) {
+    current <- harmonize_step(current, step, value_cols, type, weight, forward)
   }
   current
 }
@@ -389,24 +315,18 @@ harmonize_step <- function(
     employment = "employment_old"
   )
 
-  if (forward) {
-    from_col <- "ags_old"
-    to_col <- "ags_new"
-  } else {
-    from_col <- "ags_new"
-    to_col <- "ags_old"
-  }
+  cols <- step_columns(forward)
 
   crosswalk_join <- tibble::tibble(
-    ..ags = step_crosswalk[[from_col]],
-    ..ags_target = step_crosswalk[[to_col]],
+    ..ags = step_crosswalk[[cols$from]],
+    ..ags_target = step_crosswalk[[cols$to]],
     ..share = step_crosswalk[[share_col]],
     ..base = step_crosswalk[[base_col]]
   )
 
   joined <- dplyr::inner_join(group, crosswalk_join, by = "..ags")
 
-  warn_unmapped(setdiff(unique(group$..ags), unique(joined$..ags)))
+  warn_unmapped(unmapped_in_step(group$..ags, step_crosswalk, forward))
 
   if (type == "absolute") {
     result <- dplyr::group_by(joined, .data$..ags_target, .data$..year)
@@ -444,18 +364,10 @@ warn_unmapped <- function(unmapped) {
   }
 }
 
-# Rows already at the target year need no conversion, but face the same
-# unmapped-unit rule: an AGS is mapped if it is an `ags_new` of a transition
-# into `target_year`. Without any such transition nothing can be judged, so
-# the rows are kept.
 drop_unmapped_target_year <- function(group, crosswalk, target_year) {
-  into_target <- crosswalk$ags_new[crosswalk$year_to == target_year]
-  if (length(into_target) == 0) {
-    return(group)
-  }
-  mapped <- group$..ags %in% into_target
-  warn_unmapped(unique(group$..ags[!mapped]))
-  group[mapped, , drop = FALSE]
+  unmapped <- unmapped_at_target_year(group$..ags, crosswalk, target_year)
+  warn_unmapped(unmapped)
+  group[!(group$..ags %in% unmapped), , drop = FALSE]
 }
 
 # BBSR only offers employment as a weight basis from 1997 onward; the earlier
