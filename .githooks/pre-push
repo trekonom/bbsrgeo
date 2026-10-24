@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Refuse the push when the test suite fails, skips, or warns (about a minute,
+# needs network for the validation tests). Bypass once with: git push --no-verify
+# Enabled by: git config core.hooksPath .githooks
+cd "$(git rev-parse --show-toplevel)" && exec Rscript dev/test-all.R
