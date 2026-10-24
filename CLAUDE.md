@@ -42,7 +42,7 @@ shape (the crosswalk tibble):
 
 1. **Acquiring a crosswalk** (`R/crosswalk-available.R`,
    `R/crosswalk-available-live.R`, `R/crosswalk-download.R`,
-   `R/crosswalk-read.R`):
+   `R/crosswalk-read.R`, `R/crosswalk-checks.R`, `R/crosswalk-groups.R`):
    - `bbsr_crosswalk_available()` looks up a static table of known BBSR xlsx
      files, bundled in `R/sysdata.rda` (built by
      `data-raw/bbsr_crosswalk_urls.R`). `bbsr_crosswalk_available_live()` is
@@ -57,8 +57,11 @@ shape (the crosswalk tibble):
      (German) file name and sheet names, and warns if a given
      `ags_old`/`year_from` combination's shares don't sum to ~1 — this is a
      known upstream BBSR data-quality issue, not a bug in this package (see
-     `bbsrgeo_check_share_sums()`). The real files have up to ~150k
-     `ags_old`/transition groups: group with vectorised dplyr or `ave()`, not
+     `bbsrgeo_check_share_sums()`). The three read-time checks live in
+     `R/crosswalk-checks.R`; each returns a finding (or `NULL`) that
+     `report_finding()` in `R/utils.R` signals, and they read their per-group
+     facts from `transition_group_facts()` (`R/crosswalk-groups.R`). The real
+     files have up to ~150k `ags_old`/transition groups: group with vectorised dplyr or `ave()`, not
      a per-group loop (a `map_dfr` over groups exceeds the 2-minute tool
      timeout).
 

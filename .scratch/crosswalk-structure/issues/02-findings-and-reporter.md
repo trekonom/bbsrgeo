@@ -1,6 +1,6 @@
 # Checks return findings; one reporter signals them
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 Blocked by: 01
 

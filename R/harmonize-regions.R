@@ -587,7 +587,7 @@ renormalize_forward_shares <- function(
     off & in_window,
     sums,
     "do not sum to 1 (tolerance %s). They were renormalized so that no part of an absolute value is lost. The inconsistency is in the BBSR crosswalk, not in `data`",
-    signal = rlang::warn
+    severity = "warning"
   )
   report_share_deviations(
     crosswalk,
@@ -595,7 +595,7 @@ renormalize_forward_shares <- function(
     within_tolerance & in_window,
     sums,
     "deviate slightly from 1 (within the tolerance %s) and were renormalized to sum to 1",
-    signal = rlang::inform
+    severity = "message"
   )
 
   rescale <- off | within_tolerance
@@ -604,8 +604,9 @@ renormalize_forward_shares <- function(
   crosswalk
 }
 
-# Signals (by default as a message) that the shares of the `ags_old`/transition
-# combinations selected by `mask` deviate from 1, naming the first five. `what`
+# Reports (by default as a message) that the shares of the `ags_old`/transition
+# combinations selected by `mask` deviate from 1, naming the first
+# MAX_FINDING_EXAMPLES. `what`
 # completes the sentence "The crosswalk's <share_col> for N combination(s) ...";
 # a `%s` in it is filled with SHARE_SUM_TOLERANCE.
 report_share_deviations <- function(
@@ -614,7 +615,7 @@ report_share_deviations <- function(
   mask,
   sums,
   what,
-  signal = rlang::inform
+  severity = "message"
 ) {
   affected <- unique(data.frame(
     ags = crosswalk$ags_old[mask],
@@ -626,28 +627,31 @@ report_share_deviations <- function(
     return(invisible())
   }
   affected <- affected[order(affected$ags, affected$year_from), , drop = FALSE]
-  shown <- utils::head(affected, 5)
+  shown <- utils::head(affected, MAX_FINDING_EXAMPLES)
   what <- if (grepl("%s", what, fixed = TRUE)) {
     sprintf(what, SHARE_SUM_TOLERANCE)
   } else {
     what
   }
-  signal(sprintf(
-    "The crosswalk's %s for %d ags_old/transition combination(s) %s. Affected (first %d): %s",
-    share_col,
-    nrow(affected),
-    what,
-    nrow(shown),
-    paste(
+  report_finding(finding(
+    sprintf(
+      "The crosswalk's %s for %d ags_old/transition combination(s) %s.",
+      share_col,
+      nrow(affected),
+      what
+    ),
+    list(finding_item(
+      sprintf("combination(s) affected (first %d shown)", nrow(shown)),
+      nrow(affected),
       sprintf(
         "%s (%d -> %d, sum %.4f)",
         shown$ags,
         shown$year_from,
         shown$year_to,
         shown$share_sum
-      ),
-      collapse = "; "
-    )
+      )
+    )),
+    severity = severity
   ))
   invisible()
 }
