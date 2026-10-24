@@ -16,7 +16,8 @@ harmonize_regions(
   weight = c("population", "area", "employment"),
   target_year,
   level = c("districts", "municipalities"),
-  allow_backcast = FALSE
+  allow_backcast = FALSE,
+  renormalize = TRUE
 )
 
 harmonize_regions_districts(
@@ -28,7 +29,8 @@ harmonize_regions_districts(
   type = c("absolute", "ratio"),
   weight = c("population", "area", "employment"),
   target_year,
-  allow_backcast = FALSE
+  allow_backcast = FALSE,
+  renormalize = TRUE
 )
 
 harmonize_regions_municipalities(
@@ -40,7 +42,8 @@ harmonize_regions_municipalities(
   type = c("absolute", "ratio"),
   weight = c("population", "area", "employment"),
   target_year,
-  allow_backcast = FALSE
+  allow_backcast = FALSE,
+  renormalize = TRUE
 )
 }
 \arguments{
@@ -70,6 +73,12 @@ earlier conversion is an error.}
 
 \item{allow_backcast}{Explicitly allow backcasting (disaggregation onto
 an older boundary). Default \code{FALSE}.}
+
+\item{renormalize}{With \code{type = "absolute"}, rescale the crosswalk's shares
+where they do not sum to 1 (see Details). Default \code{TRUE}. With \code{FALSE},
+the shares are used as given, so a value is lost or created where they
+sum below or above 1; the deviating combinations are still reported in a
+message.}
 }
 \value{
 A tibble with columns \code{ags_col}, \code{year_col}, \code{value_cols}
@@ -103,8 +112,11 @@ deviate by more than 0.01 (e.g. BBSR's annual districts crosswalk has
 self-mapping rows with \code{share_population} 0.017 for 07137000 in
 2014 -> 2015), the shares are renormalized to sum to 1, so no part of a
 count is lost, and a warning names the affected AGS and transitions. The
-deviation is in the crosswalk, not in \code{data}. Two exceptions apply, both
-without a warning. First, where the counts of a source unit
+deviation is in the crosswalk, not in \code{data}. A sum within 0.01 of 1 (e.g.
+three shares of 0.33) is also rescaled to 1, with a message instead of a
+warning. With \code{renormalize = FALSE} the shares are used as given and a
+message names the combinations that deviate. Two exceptions apply to
+deviations beyond 0.01, both without a warning. First, where the counts of a source unit
 (\code{population_old}, \code{area_old} or \code{employment_old} in the crosswalk) are
 all observed, differ between its target rows and have a positive total,
 they are read as the parts going to each target and the shares become

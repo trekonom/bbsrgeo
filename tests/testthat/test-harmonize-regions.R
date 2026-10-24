@@ -478,7 +478,7 @@ test_that("absolute conversion distributes the full count proportionally when sp
   expect_equal(res$population[res$ags == "01000003"], 300)
 })
 
-test_that("shares within tolerance of 1 are left untouched and do not warn", {
+test_that("shares within tolerance of 1 are rescaled to sum to 1 and do not warn", {
   crosswalk <- dplyr::bind_rows(
     crosswalk_row(
       "01000001",
@@ -491,21 +491,26 @@ test_that("shares within tolerance of 1 are left untouched and do not warn", {
   )
   data <- tibble::tibble(ags = "01000001", year = 2020L, population = 1000)
 
-  expect_no_warning(
-    res <- harmonize_regions(
-      data,
-      crosswalk,
-      "ags",
-      "year",
-      "population",
-      type = "absolute",
-      weight = "population",
-      target_year = 2021L,
-      level = "districts"
-    )
+  expect_message(
+    res <- expect_no_warning(
+      harmonize_regions(
+        data,
+        crosswalk,
+        "ags",
+        "year",
+        "population",
+        type = "absolute",
+        weight = "population",
+        target_year = 2021L,
+        level = "districts"
+      )
+    ),
+    "deviate slightly from 1"
   )
-  expect_equal(res$population[res$ags == "01000002"], 595)
-  expect_equal(res$population[res$ags == "01000003"], 400)
+  # Sum 0.995, rescaled: 1000 * 0.595 / 0.995 and 1000 * 0.40 / 0.995.
+  expect_equal(res$population[res$ags == "01000002"], 598, tolerance = 1e-3)
+  expect_equal(res$population[res$ags == "01000003"], 402, tolerance = 1e-3)
+  expect_equal(sum(res$population), 1000)
 })
 
 test_that("renormalization warns once, naming the affected AGS, the transition and the crosswalk as cause", {
@@ -1025,4 +1030,58 @@ test_that("harmonize_regions leaves target-year rows alone when no transition le
     )
   )
   expect_equal(res$ags, "01000009")
+})
+
+test_that("a share sum within the tolerance is renormalized, with a message and no warning", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row(
+      "01000001",
+      "01000002",
+      2020L,
+      2021L,
+      share_population = 0.66
+    ),
+    crosswalk_row("01000001", "01000003", 2020L, 2021L, share_population = 0.33)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, population = 990)
+
+  expect_message(
+    res <- expect_no_warning(harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      type = "absolute",
+      target_year = 2021L,
+      level = "districts"
+    )),
+    "01000001 \\(2020 -> 2021, sum 0.9900\\)"
+  )
+  expect_equal(sum(res$population), 990)
+  expect_equal(sort(res$population), c(330, 660))
+})
+
+test_that("renormalize = FALSE uses the shares as given and reports the deviation", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000002", 2020L, 2021L, share_population = 0.6),
+    crosswalk_row("01000001", "01000003", 2020L, 2021L, share_population = 0.3)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, population = 1000)
+
+  expect_message(
+    res <- expect_no_warning(harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      type = "absolute",
+      target_year = 2021L,
+      level = "districts",
+      renormalize = FALSE
+    )),
+    "used as given.*01000001 \\(2020 -> 2021, sum 0.9000\\)"
+  )
+  expect_equal(sort(res$population), c(300, 600))
 })

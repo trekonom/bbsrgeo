@@ -91,5 +91,5 @@ Harmonization from a newer to an older boundary year, done by applying the forwa
 _Avoid_: reverse conversion, downscaling
 
 **Renormalization**:
-Rescaling the shares of a transition with a share deviation so they sum to 1, so no part of an absolute value is lost.
+Rescaling the shares of a transition whose shares do not sum to 1 so they sum to 1, so no part of an absolute value is lost. The default of `harmonize_regions()`; `renormalize = FALSE` uses the shares as given. Deviations beyond the tolerance warn, smaller ones only produce a message.
 _Avoid_: correction, fixing

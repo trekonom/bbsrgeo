@@ -24,8 +24,11 @@
 #' self-mapping rows with `share_population` 0.017 for 07137000 in
 #' 2014 -> 2015), the shares are renormalized to sum to 1, so no part of a
 #' count is lost, and a warning names the affected AGS and transitions. The
-#' deviation is in the crosswalk, not in `data`. Two exceptions apply, both
-#' without a warning. First, where the counts of a source unit
+#' deviation is in the crosswalk, not in `data`. A sum within 0.01 of 1 (e.g.
+#' three shares of 0.33) is also rescaled to 1, with a message instead of a
+#' warning. With `renormalize = FALSE` the shares are used as given and a
+#' message names the combinations that deviate. Two exceptions apply to
+#' deviations beyond 0.01, both without a warning. First, where the counts of a source unit
 #' (`population_old`, `area_old` or `employment_old` in the crosswalk) are
 #' all observed, differ between its target rows and have a positive total,
 #' they are read as the parts going to each target and the shares become
@@ -76,6 +79,11 @@
 #' @param level `"districts"` or `"municipalities"`.
 #' @param allow_backcast Explicitly allow backcasting (disaggregation onto
 #'   an older boundary). Default `FALSE`.
+#' @param renormalize With `type = "absolute"`, rescale the crosswalk's shares
+#'   where they do not sum to 1 (see Details). Default `TRUE`. With `FALSE`,
+#'   the shares are used as given, so a value is lost or created where they
+#'   sum below or above 1; the deviating combinations are still reported in a
+#'   message.
 #'
 #' @return A tibble with columns `ags_col`, `year_col`, `value_cols`
 #'   (converted), and `boundary_year` (= `target_year`, resolved to a year).
@@ -90,7 +98,8 @@ harmonize_regions <- function(
   weight = c("population", "area", "employment"),
   target_year,
   level = c("districts", "municipalities"),
-  allow_backcast = FALSE
+  allow_backcast = FALSE,
+  renormalize = TRUE
 ) {
   type <- match.arg(type)
   weight <- match.arg(weight)
@@ -106,7 +115,8 @@ harmonize_regions <- function(
       type,
       weight,
       target_year,
-      allow_backcast
+      allow_backcast,
+      renormalize
     )
   } else {
     harmonize_regions_municipalities(
@@ -118,7 +128,8 @@ harmonize_regions <- function(
       type,
       weight,
       target_year,
-      allow_backcast
+      allow_backcast,
+      renormalize
     )
   }
 }
@@ -134,7 +145,8 @@ harmonize_regions_districts <- function(
   type = c("absolute", "ratio"),
   weight = c("population", "area", "employment"),
   target_year,
-  allow_backcast = FALSE
+  allow_backcast = FALSE,
+  renormalize = TRUE
 ) {
   type <- match.arg(type)
   weight <- match.arg(weight)
@@ -147,7 +159,8 @@ harmonize_regions_districts <- function(
     type,
     weight,
     target_year,
-    allow_backcast
+    allow_backcast,
+    renormalize
   )
 }
 
@@ -162,7 +175,8 @@ harmonize_regions_municipalities <- function(
   type = c("absolute", "ratio"),
   weight = c("population", "area", "employment"),
   target_year,
-  allow_backcast = FALSE
+  allow_backcast = FALSE,
+  renormalize = TRUE
 ) {
   type <- match.arg(type)
   weight <- match.arg(weight)
@@ -175,7 +189,8 @@ harmonize_regions_municipalities <- function(
     type,
     weight,
     target_year,
-    allow_backcast
+    allow_backcast,
+    renormalize
   )
 }
 
@@ -188,7 +203,8 @@ harmonize_regions_impl <- function(
   type,
   weight,
   target_year,
-  allow_backcast
+  allow_backcast,
+  renormalize
 ) {
   stopifnot(
     ags_col %in% names(data),
@@ -222,7 +238,8 @@ harmonize_regions_impl <- function(
       crosswalk,
       paste0("share_", weight),
       min(base$..year),
-      target_year_resolved
+      target_year_resolved,
+      renormalize
     )
   }
 
@@ -509,17 +526,33 @@ renormalize_forward_shares <- function(
   crosswalk,
   share_col,
   from_year,
-  to_year
+  to_year,
+  renormalize = TRUE
 ) {
   group_key <- paste(crosswalk$ags_old, crosswalk$year_from, crosswalk$year_to)
   group_sum <- function(x) {
     stats::ave(x, group_key, FUN = function(v) sum(v, na.rm = TRUE))
   }
   sums <- group_sum(crosswalk[[share_col]])
-  off <- !is.na(sums) & sums > 0 & share_sum_deviates(sums)
-  if (!any(off)) {
+  off_any <- !is.na(sums) & sums > 0 & abs(sums - 1) > SHARE_SUM_FLOAT_SLACK
+  if (!any(off_any)) {
     return(crosswalk)
   }
+  in_window <- crosswalk$year_from >= from_year & crosswalk$year_to <= to_year
+  if (!renormalize) {
+    report_share_deviations(
+      crosswalk,
+      share_col,
+      off_any & in_window,
+      sums,
+      "were used as given (renormalize = FALSE)"
+    )
+    return(crosswalk)
+  }
+  # Beyond the tolerance the counts rules below apply; within it (rounding)
+  # the shares are only rescaled, with a message instead of a warning.
+  off <- off_any & share_sum_deviates(sums)
+  within_tolerance <- off_any & !off
 
   basis_col <- paste0(sub("^share_", "", share_col), "_old")
   if (basis_col %in% names(crosswalk)) {
@@ -557,51 +590,75 @@ renormalize_forward_shares <- function(
     crosswalk[[share_col]][parts] <- basis[parts] / basis_sums[parts]
 
     off <- off & !zero_basis & !parts
-    if (!any(off)) {
-      return(crosswalk)
-    }
   }
 
-  in_range <- off &
-    crosswalk$year_from >= from_year &
-    crosswalk$year_to <= to_year
-  affected <- unique(data.frame(
-    ags = crosswalk$ags_old[in_range],
-    year_from = crosswalk$year_from[in_range],
-    year_to = crosswalk$year_to[in_range],
-    share_sum = sums[in_range]
-  ))
-  if (nrow(affected) > 0) {
-    affected <- affected[
-      order(affected$ags, affected$year_from),
-      ,
-      drop = FALSE
-    ]
-    shown <- utils::head(affected, 5)
-    rlang::warn(sprintf(
-      paste(
-        "The crosswalk's %s for %d ags_old/transition combination(s) do not sum",
-        "to 1 (tolerance %s). They were renormalized so that no part of an",
-        "absolute value is lost. The inconsistency is in the BBSR crosswalk,",
-        "not in `data`. Affected (first %d): %s"
-      ),
-      share_col,
-      nrow(affected),
-      SHARE_SUM_TOLERANCE,
-      nrow(shown),
-      paste(
-        sprintf(
-          "%s (%d -> %d, sum %.3f)",
-          shown$ags,
-          shown$year_from,
-          shown$year_to,
-          shown$share_sum
-        ),
-        collapse = "; "
-      )
-    ))
-  }
+  report_share_deviations(
+    crosswalk,
+    share_col,
+    off & in_window,
+    sums,
+    "do not sum to 1 (tolerance %s). They were renormalized so that no part of an absolute value is lost. The inconsistency is in the BBSR crosswalk, not in `data`",
+    signal = rlang::warn
+  )
+  report_share_deviations(
+    crosswalk,
+    share_col,
+    within_tolerance & in_window,
+    sums,
+    "deviate slightly from 1 (within the tolerance %s) and were renormalized to sum to 1",
+    signal = rlang::inform
+  )
 
-  crosswalk[[share_col]][off] <- crosswalk[[share_col]][off] / sums[off]
+  rescale <- off | within_tolerance
+  crosswalk[[share_col]][rescale] <- crosswalk[[share_col]][rescale] /
+    sums[rescale]
   crosswalk
+}
+
+# Signals (by default as a message) that the shares of the `ags_old`/transition
+# combinations selected by `mask` deviate from 1, naming the first five. `what`
+# completes the sentence "The crosswalk's <share_col> for N combination(s) ...";
+# a `%s` in it is filled with SHARE_SUM_TOLERANCE.
+report_share_deviations <- function(
+  crosswalk,
+  share_col,
+  mask,
+  sums,
+  what,
+  signal = rlang::inform
+) {
+  affected <- unique(data.frame(
+    ags = crosswalk$ags_old[mask],
+    year_from = crosswalk$year_from[mask],
+    year_to = crosswalk$year_to[mask],
+    share_sum = sums[mask]
+  ))
+  if (nrow(affected) == 0) {
+    return(invisible())
+  }
+  affected <- affected[order(affected$ags, affected$year_from), , drop = FALSE]
+  shown <- utils::head(affected, 5)
+  what <- if (grepl("%s", what, fixed = TRUE)) {
+    sprintf(what, SHARE_SUM_TOLERANCE)
+  } else {
+    what
+  }
+  signal(sprintf(
+    "The crosswalk's %s for %d ags_old/transition combination(s) %s. Affected (first %d): %s",
+    share_col,
+    nrow(affected),
+    what,
+    nrow(shown),
+    paste(
+      sprintf(
+        "%s (%d -> %d, sum %.4f)",
+        shown$ags,
+        shown$year_from,
+        shown$year_to,
+        shown$share_sum
+      ),
+      collapse = "; "
+    )
+  ))
+  invisible()
 }
