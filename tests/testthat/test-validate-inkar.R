@@ -5,7 +5,8 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
   crosswalk <- tryCatch(
     {
       path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
-      bbsr_crosswalk_read(path)
+      # Warns about the known share-sum anomalies handled by renormalization.
+      suppressWarnings(bbsr_crosswalk_read(path))
     },
     error = function(e) NULL
   )

@@ -22,9 +22,8 @@ not apply the Cochem-Zell transfer" wording this rule replaces
 ## Formatting
 
 Format new and changed R code with [air](https://posit-dev.github.io/air/)
-before every commit or push: `air format R tests dev data-raw`. Report
-unformatted code in a diff. If `air` is not on the `PATH`, Positron bundles
-it under `~/.positron/extensions/posit.air-vscode-*/bundled/bin/air`.
+before every commit or push: `dev/format.sh` (it finds `air` on the `PATH` or
+in Positron's bundled copy). Report unformatted code in a diff.
 
 ## Tests
 
