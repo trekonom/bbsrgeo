@@ -1,6 +1,6 @@
 # Rows already at the target year bypass the unmapped-unit check
 
-Status: ready-for-agent
+Status: done
 Category: bug
 
 Found while grilling the domain model (GLOSSARY.md).
