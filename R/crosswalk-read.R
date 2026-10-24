@@ -160,13 +160,35 @@ bbsrgeo_read_sheet <- function(path, sheet, meta) {
       path,
       sheet = sheet,
       col_names = FALSE,
-      skip = 1,
       col_types = "text"
     )
   )
+  # Row 1 is the header; its text tells the 10-column layouts apart.
+  header <- unlist(raw[1, ], use.names = FALSE)
+  raw <- raw[-1, ]
   n <- ncol(raw)
 
-  if (n == 8) {
+  # Since the 2022 sheet of ref-gemeinden-2020-2024.xlsx a 12-digit
+  # Regionalschluessel follows each AGS and the employment columns are gone:
+  # also 10 columns, but not the employment layout below.
+  has_regional_key <- n == 10 &&
+    grepl("Regionalschl", header[2], ignore.case = TRUE)
+
+  if (has_regional_key) {
+    cols <- c(
+      "ags_old",
+      "regional_key_old",
+      "name_old",
+      "share_area",
+      "share_population",
+      "area_old",
+      "population_old",
+      "ags_new",
+      "regional_key_new",
+      "name_new"
+    )
+    has_employment <- FALSE
+  } else if (n == 8) {
     cols <- c(
       "ags_old",
       "name_old",

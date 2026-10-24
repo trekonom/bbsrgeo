@@ -108,3 +108,31 @@ test_that("bbsrgeo_sheet_years rejects a two-digit end year that is not the next
   meta <- list(kind = "annual", file_name = "ref-gemeinden-1990-2000.xlsx")
   expect_error(bbsrgeo_sheet_years("1990-93", meta), "Unexpected sheet name")
 })
+
+test_that("bbsr_crosswalk_read parses the municipal Regionalschluessel layout", {
+  # Reading must not warn: the 12-digit Regionalschluessel is not an AGS.
+  d <- expect_no_warning(bbsr_crosswalk_read(test_path(
+    "fixtures",
+    "ref-gemeinden-testfixture-regionalschluessel.xlsx"
+  )))
+
+  expect_equal(nrow(d), 4)
+  # The 12-digit Regionalschluessel columns are not read as AGS, and the
+  # 10 columns are not mistaken for the employment layout.
+  expect_equal(
+    sort(unique(c(d$ags_old, d$ags_new))),
+    c("01001000", "01002000", "01009000", "01010000")
+  )
+  expect_equal(
+    d$name_old[d$year_from == 2022 & d$ags_old == "01001000"],
+    "Town A"
+  )
+  expect_true(all(is.na(d$share_employment)))
+  expect_true(all(is.na(d$employment_old)))
+
+  split <- d[d$year_from == 2022 & d$ags_old == "01002000", ]
+  expect_equal(sort(split$share_area), c(0.4, 0.6))
+  expect_equal(sort(split$share_population), c(0.3, 0.7))
+  expect_equal(sum(split$population_old), 1000)
+  expect_equal(d$population_old[d$year_from == 2023], 92667)
+})

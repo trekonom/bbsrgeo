@@ -125,4 +125,88 @@ writexl::write_xlsx(
   col_names = FALSE
 )
 
+
+# --- File 3: municipal "annual" file with the Regionalschluessel layout ---
+# Since the 2022 sheet of ref-gemeinden-2020-2024.xlsx the BBSR adds a
+# 12-digit Regionalschluessel after each AGS and drops the employment
+# columns (10 columns, but NOT the employment layout). Detected from the
+# header text of column 2 (the real header has an embedded line break). The 2022 sheet drops the leading zero of the AGS
+# ("1001000"), the 2023 sheet keeps it; both are written as text here.
+# Column order: ags_old, rs_old, name_old, share_area, share_population,
+#   area_old, population_old, ags_new, rs_new, name_new
+head_rs <- c(
+  "Gemeinden 31.12.2022",
+  "Gemeinden Regionalschlüssel 31.12.2022",
+  "Gemeindename 2022",
+  "flächenproportionaler Umsteigeschlüssel",
+  "bevölkerungsproportionaler Umsteigeschlüssel",
+  "Fläche am 31.12.2022 in km²",
+  "Bevölkerung am 31.12.2022",
+  "Gemeinden 31.12.2023",
+  "Gemeinden Regionalschlüssel 31.12.2023",
+  "Gemeindename 2023"
+)
+sheet_rs_2022 <- rbind(
+  head_rs,
+  c(
+    "1001000",
+    "10010000000",
+    "Town A",
+    "1",
+    "1",
+    "56.7",
+    "92550",
+    "1001000",
+    "10010000000",
+    "Town A"
+  ),
+  c(
+    "1002000",
+    "10020000000",
+    "Town B",
+    "0.4",
+    "0.3",
+    "40",
+    "300",
+    "1009000",
+    "10090000000",
+    "Town N"
+  ),
+  c(
+    "1002000",
+    "10020000000",
+    "Town B",
+    "0.6",
+    "0.7",
+    "60",
+    "700",
+    "1010000",
+    "10100000000",
+    "Town M"
+  )
+)
+sheet_rs_2023 <- rbind(
+  head_rs,
+  c(
+    "01001000",
+    "010010000000",
+    "Town A",
+    "1",
+    "1",
+    "56.7",
+    "92667",
+    "01001000",
+    "010010000000",
+    "Town A"
+  )
+)
+writexl::write_xlsx(
+  list(
+    "2022" = as.data.frame(sheet_rs_2022),
+    "2023" = as.data.frame(sheet_rs_2023)
+  ),
+  path = "tests/testthat/fixtures/ref-gemeinden-testfixture-regionalschluessel.xlsx",
+  col_names = FALSE
+)
+
 message("Fixtures written to tests/testthat/fixtures/")

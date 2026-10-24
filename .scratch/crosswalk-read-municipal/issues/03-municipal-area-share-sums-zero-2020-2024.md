@@ -1,6 +1,6 @@
 # 2020-2024 municipal file: 32,924 ags_old/year_from combinations with area share sum 0
 
-Status: needs-triage
+Status: done
 Category: bug
 
 Follow-up from issue 01 (municipal crosswalk reading, commit 1f98881). Found
@@ -20,5 +20,11 @@ investigated beyond the observation below.
 ## Out of scope
 
 Changing the share-sum warning wording; correcting the BBSR data itself.
+
+## Resolution
+
+Same root cause as issue 02: the 2022-2024 sheets of the 2020-2024 file have a
+Regionalschluessel layout that was read as the employment layout. Fixed with
+issue 02; area-share sums off 1 went from 32,924 to 0 on the real file.
 
 ## Comments
