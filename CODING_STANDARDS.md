@@ -31,3 +31,13 @@ not apply the Cochem-Zell transfer" wording this rule replaces
   tolerance) one named constant.
 - Tolerances come from measured data: state the observed maximum in the
   comment next to the bound.
+
+## Docs
+
+When a function's responsibility moves, grep `docs/`, `GLOSSARY.md` and
+`CLAUDE.md` for its name and check that each doc still says where the rule
+lives. `dev/check-refs.R` finds a doc that names something that no longer
+exists; it cannot find one that names something that exists but no longer does
+what the doc says. Precedent: ADR 0001 kept pointing at
+`renormalize_forward_shares()` for the treatment order after it moved to
+`classify_share_deviations()`.
