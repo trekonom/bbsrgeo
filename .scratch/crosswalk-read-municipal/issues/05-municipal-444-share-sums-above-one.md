@@ -21,4 +21,22 @@ Population share sums per `ags_old`/`year_from` are far above 1 for a set of cod
 
 Changing the share-sum warning wording; correcting the BBSR data itself.
 
+## Resolution (question 3)
+
+`renormalize_forward_shares()` (`R/harmonize-regions.R`): for
+`type = "absolute"`, a group whose weight basis (`population_old` /
+`employment_old`) is observed and 0 on every row is split by area share
+(normalized to 1), with no warning and no renormalization of its
+population/employment share. Other off-1 groups are renormalized and warned
+about as before (ltc-validation 07). An all-NA basis is not a zero basis, and a
+missing `*_old` column skips the fallback. For `weight = "area"` there is no
+fallback (area is the basis): a zero-area group is still renormalized with a
+warning. Documented in the roxygen of `harmonize_regions()`.
+
+Real municipal files, `renormalize_forward_shares(share_population)`:
+2000-2010, 2010-2020, 2020-2024: no warning (before: 33 and 1 combinations);
+1990-2000: still 4 combinations (01060102, 12039430, 12043470, 15321210), the
+non-zero cases. Not checked whether those four follow the same convention, so
+they are still renormalized and warned about.
+
 ## Comments
