@@ -42,7 +42,7 @@ shape (the crosswalk tibble):
 
 1. **Acquiring a crosswalk** (`R/crosswalk-available.R`,
    `R/crosswalk-available-live.R`, `R/crosswalk-download.R`,
-   `R/crosswalk-read.R`, `R/crosswalk-checks.R`, `R/crosswalk-groups.R`):
+   `R/crosswalk-read.R`, `R/crosswalk-checks.R`, `R/share-deviations.R`):
    - `bbsr_crosswalk_available()` looks up a static table of known BBSR xlsx
      files, bundled in `R/sysdata.rda` (built by
      `data-raw/bbsr_crosswalk_urls.R`). `bbsr_crosswalk_available_live()` is
@@ -57,14 +57,15 @@ shape (the crosswalk tibble):
      (German) file name and sheet names, and warns if a given
      `ags_old`/`year_from` combination's shares don't sum to ~1 — this is a
      known upstream BBSR data-quality issue, not a bug in this package. The
-     read-time checks are in `R/crosswalk-checks.R`; they read per-group facts
-     from `R/crosswalk-groups.R`.
+     read-time checks are in `R/crosswalk-checks.R`; they and the renormalization
+     in `harmonize_regions()` ask `R/share-deviations.R` which transition
+     groups deviate and which treatment applies (`classify_share_deviations()`).
    - The real files have up to ~150k `ags_old`/transition groups. Evaluating
      R code per group is slow at that size: a `map_dfr` over groups exceeds
      the 2-minute tool timeout, and a grouped `dplyr::mutate()` with several
      expressions made `test-crosswalk-read.R` about 4.5x slower than `ave()`
      (measured 2026-10-24). A group id with `rowsum()` and sorting is as fast
-     as `ave()` (see `R/crosswalk-groups.R`).
+     as `ave()` (see `R/share-deviations.R`).
 
 2. **Applying a crosswalk** (`R/harmonize-regions.R`, `R/check-regions.R`):
    - `harmonize_regions()` (dispatches to `harmonize_regions_districts()` /

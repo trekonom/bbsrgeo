@@ -90,35 +90,24 @@ bbsrgeo_check_count_shares <- function(data) {
     if (!all(c(share_col, count_col) %in% names(data))) {
       next
     }
+    classified <- classify_share_deviations(data, basis)
+    disagree <- classified$count_gap_exceeds_resolution
+    if (!any(disagree)) {
+      next
+    }
+    # The largest gap per group is taken over its rows with a gap, which are
+    # all rows of a group that has one.
+    has_gap <- !is.na(classified$count_gap)
     d <- data.frame(
       ags_old = data$ags_old,
       year_from = data$year_from,
       year_to = data$year_to,
-      share = data[[share_col]],
-      count = data[[count_col]]
-    )
-    facts <- transition_group_facts(data, basis)
-    group_n <- facts$n_rows
-    total <- facts$count_total
-    share_sum <- facts$share_sum
-    eligible <- group_n > 1 &
-      facts$counts_observed &
-      facts$counts_differ &
-      facts$counts_non_negative &
-      !is.na(total) &
-      total > 0 &
-      !is.na(share_sum) &
-      !share_sum_deviates(share_sum)
-    excess <- abs(d$count / total - d$share) -
-      COUNT_RESOLUTION * (1 + group_n) / total
-    disagree <- eligible & !is.na(excess) & excess > 0
-    if (!any(disagree)) {
-      next
-    }
-    d$deviation <- abs(d$count / total - d$share)
+      deviation = classified$count_gap
+    )[has_gap, , drop = FALSE]
+    disagree <- disagree[has_gap]
     d <- dplyr::ungroup(dplyr::mutate(
       dplyr::group_by(d, .data$ags_old, .data$year_from, .data$year_to),
-      largest = max(.data$deviation, na.rm = TRUE)
+      largest = max(.data$deviation)
     ))
     groups <- unique(d[
       disagree,
@@ -168,40 +157,20 @@ bbsrgeo_check_count_shares <- function(data) {
 #' @return A [finding()], or `NULL` when nothing is found.
 #' @noRd
 bbsrgeo_check_share_sums <- function(data) {
-  facts <- lapply(
-    c(area = "area", population = "population", employment = "employment"),
-    function(basis) transition_group_facts(data, basis)
-  )
-  rows <- data.frame(
-    ags_old = data$ags_old,
-    year_from = data$year_from,
-    year_to = data$year_to,
-    n_rows = facts$area$n_rows,
-    area_sum = facts$area$share_sum,
-    all_one = abs(data$share_area - 1) <= SHARE_SUM_TOLERANCE,
-    counts_differ = facts$area$counts_differ |
-      facts$population$counts_differ |
-      facts$employment$counts_differ
-  )
-  summary <- dplyr::summarise(
-    dplyr::group_by(rows, .data$ags_old, .data$year_from, .data$year_to),
-    n_rows = dplyr::first(.data$n_rows),
-    area_sum = dplyr::first(.data$area_sum),
-    all_one = all(.data$all_one),
-    counts_differ = dplyr::first(.data$counts_differ),
-    .groups = "drop"
-  )
-  off <- summary[share_sum_deviates(summary$area_sum), , drop = FALSE]
-  if (nrow(off) == 0) {
+  classified <- share_deviation_patterns(data)
+  deviating <- !is.na(classified$pattern)
+  if (!any(deviating)) {
     return(NULL)
   }
+  off <- unique(data.frame(
+    ags_old = data$ags_old[deviating],
+    year_from = data$year_from[deviating],
+    year_to = data$year_to[deviating],
+    area_sum = classified$share_sum[deviating],
+    pattern = classified$pattern[deviating]
+  ))
+  off <- off[order(off$ags_old, off$year_from, off$year_to), , drop = FALSE]
 
-  # Patterns are named from what the rows look like, not from a cause.
-  off$pattern <- dplyr::case_when(
-    off$n_rows > 1 & off$all_one & off$counts_differ ~ "a",
-    off$n_rows == 1 & off$area_sum < 1 ~ "b",
-    TRUE ~ "c"
-  )
   labels <- c(
     a = paste(
       "a share of 1 on every target row of a multi-row group, with counts",
@@ -237,4 +206,56 @@ bbsrgeo_check_share_sums <- function(data) {
     items,
     "Please check the original file if in doubt."
   )
+}
+
+# Reports (by default as a message) that the shares of the `ags_old`/transition
+# combinations selected by `mask` deviate from 1, naming the first
+# MAX_FINDING_EXAMPLES. `what`
+# completes the sentence "The crosswalk's <share_col> for N combination(s) ...";
+# a `%s` in it is filled with SHARE_SUM_TOLERANCE.
+report_share_deviations <- function(
+  crosswalk,
+  share_col,
+  mask,
+  sums,
+  what,
+  severity = "message"
+) {
+  affected <- unique(data.frame(
+    ags = crosswalk$ags_old[mask],
+    year_from = crosswalk$year_from[mask],
+    year_to = crosswalk$year_to[mask],
+    share_sum = sums[mask]
+  ))
+  if (nrow(affected) == 0) {
+    return(invisible())
+  }
+  affected <- affected[order(affected$ags, affected$year_from), , drop = FALSE]
+  shown <- utils::head(affected, MAX_FINDING_EXAMPLES)
+  what <- if (grepl("%s", what, fixed = TRUE)) {
+    sprintf(what, SHARE_SUM_TOLERANCE)
+  } else {
+    what
+  }
+  report_finding(finding(
+    sprintf(
+      "The crosswalk's %s for %d ags_old/transition combination(s) %s.",
+      share_col,
+      nrow(affected),
+      what
+    ),
+    list(finding_item(
+      sprintf("combination(s) affected (first %d shown)", nrow(shown)),
+      nrow(affected),
+      sprintf(
+        "%s (%d -> %d, sum %.4f)",
+        shown$ags,
+        shown$year_from,
+        shown$year_to,
+        shown$share_sum
+      )
+    )),
+    severity = severity
+  ))
+  invisible()
 }

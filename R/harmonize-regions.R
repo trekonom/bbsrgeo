@@ -506,22 +506,12 @@ weighted_mean_or_na <- function(x, w) {
   stats::weighted.mean(x, w = w, na.rm = TRUE)
 }
 
-# Corrects `share_col` per ags_old/year_from/year_to where the group's shares
-# deviate from a sum of 1 by more than SHARE_SUM_TOLERANCE (groups summing to 0
-# are left as they are). In order, for a group with a weight basis column
-# (`<weight>_old`):
-# 1. Basis observed and 0 on every row (a unit without population/employment):
-#    the crosswalks give it a share of 1 on every target row (observed, e.g.
-#    09671456, 2020; see .scratch/crosswalk-read-municipal issue 05), which
-#    cannot be a split. Split by area share instead (not for weight = "area").
-# 2. Basis observed on every row, differing between rows, positive total: read
-#    as the parts going to each target (observed, e.g. 12039430, 1992, whose
-#    count shares are 0.30 / 0.70; see issue 05), so the shares are
-#    count / total.
-# 3. Otherwise (e.g. the unit's total repeated on every row): renormalized to
-#    sum to 1.
-# Only case 3 warns, once, for the transitions that conversion from `from_year`
-# to `to_year` passes through.
+# Corrects `share_col` where classify_share_deviations() finds a group's shares
+# off a sum of 1 (see there for the treatments; ADR 0001). Reports the
+# renormalized groups once, as a warning, and the ones within the tolerance as
+# a message, for the transitions that conversion from `from_year` to `to_year`
+# passes through. With `renormalize = FALSE` the shares are used as given and
+# only reported.
 renormalize_forward_shares <- function(
   crosswalk,
   share_col,
@@ -529,62 +519,30 @@ renormalize_forward_shares <- function(
   to_year,
   renormalize = TRUE
 ) {
-  basis_name <- sub("^share_", "", share_col)
-  facts <- transition_group_facts(crosswalk, basis_name)
-  sums <- facts$share_sum
-  off_any <- !is.na(sums) & sums > 0 & abs(sums - 1) > SHARE_SUM_FLOAT_SLACK
-  if (!any(off_any)) {
+  classified <- classify_share_deviations(
+    crosswalk,
+    sub("^share_", "", share_col)
+  )
+  off <- classified$treatment != "ok"
+  if (!any(off)) {
     return(crosswalk)
   }
   in_window <- crosswalk$year_from >= from_year & crosswalk$year_to <= to_year
+  sums <- classified$share_sum
   if (!renormalize) {
     report_share_deviations(
       crosswalk,
       share_col,
-      off_any & in_window,
+      off & in_window,
       sums,
       "were used as given (renormalize = FALSE)"
     )
     return(crosswalk)
   }
-  # Beyond the tolerance the counts rules below apply; within it (rounding)
-  # the shares are only rescaled, with a message instead of a warning.
-  off <- off_any & share_sum_deviates(sums)
-  within_tolerance <- off_any & !off
-
-  basis_col <- paste0(basis_name, "_old")
-  if (basis_col %in% names(crosswalk)) {
-    # A missing basis (NA) is neither zero nor a part: only observed values count.
-    basis <- crosswalk[[basis_col]]
-    basis_sums <- facts$count_total
-    all_observed <- facts$counts_observed
-    varies <- facts$counts_differ
-    non_negative <- facts$counts_non_negative
-    area_sums <- transition_group_facts(crosswalk, "area")$share_sum
-
-    zero_basis <- off &
-      all_observed &
-      basis_sums == 0 &
-      share_col != "share_area" &
-      area_sums > 0
-    crosswalk[[share_col]][zero_basis] <- crosswalk$share_area[zero_basis] /
-      area_sums[zero_basis]
-
-    parts <- off &
-      !zero_basis &
-      all_observed &
-      varies &
-      non_negative &
-      basis_sums > 0
-    crosswalk[[share_col]][parts] <- basis[parts] / basis_sums[parts]
-
-    off <- off & !zero_basis & !parts
-  }
-
   report_share_deviations(
     crosswalk,
     share_col,
-    off & in_window,
+    classified$treatment == "renormalize" & in_window,
     sums,
     "do not sum to 1 (tolerance %s). They were renormalized so that no part of an absolute value is lost. The inconsistency is in the BBSR crosswalk, not in `data`",
     severity = "warning"
@@ -592,66 +550,11 @@ renormalize_forward_shares <- function(
   report_share_deviations(
     crosswalk,
     share_col,
-    within_tolerance & in_window,
+    classified$treatment == "rounding" & in_window,
     sums,
     "deviate slightly from 1 (within the tolerance %s) and were renormalized to sum to 1",
     severity = "message"
   )
-
-  rescale <- off | within_tolerance
-  crosswalk[[share_col]][rescale] <- crosswalk[[share_col]][rescale] /
-    sums[rescale]
+  crosswalk[[share_col]] <- classified$share
   crosswalk
-}
-
-# Reports (by default as a message) that the shares of the `ags_old`/transition
-# combinations selected by `mask` deviate from 1, naming the first
-# MAX_FINDING_EXAMPLES. `what`
-# completes the sentence "The crosswalk's <share_col> for N combination(s) ...";
-# a `%s` in it is filled with SHARE_SUM_TOLERANCE.
-report_share_deviations <- function(
-  crosswalk,
-  share_col,
-  mask,
-  sums,
-  what,
-  severity = "message"
-) {
-  affected <- unique(data.frame(
-    ags = crosswalk$ags_old[mask],
-    year_from = crosswalk$year_from[mask],
-    year_to = crosswalk$year_to[mask],
-    share_sum = sums[mask]
-  ))
-  if (nrow(affected) == 0) {
-    return(invisible())
-  }
-  affected <- affected[order(affected$ags, affected$year_from), , drop = FALSE]
-  shown <- utils::head(affected, MAX_FINDING_EXAMPLES)
-  what <- if (grepl("%s", what, fixed = TRUE)) {
-    sprintf(what, SHARE_SUM_TOLERANCE)
-  } else {
-    what
-  }
-  report_finding(finding(
-    sprintf(
-      "The crosswalk's %s for %d ags_old/transition combination(s) %s.",
-      share_col,
-      nrow(affected),
-      what
-    ),
-    list(finding_item(
-      sprintf("combination(s) affected (first %d shown)", nrow(shown)),
-      nrow(affected),
-      sprintf(
-        "%s (%d -> %d, sum %.4f)",
-        shown$ags,
-        shown$year_from,
-        shown$year_to,
-        shown$share_sum
-      )
-    )),
-    severity = severity
-  ))
-  invisible()
 }

@@ -42,32 +42,6 @@ normalize_ags <- function(x) {
   ifelse(is.na(ags_num), NA_character_, sprintf("%08.0f", ags_num))
 }
 
-# Largest deviation of a crosswalk's shares per ags_old/transition from a sum of
-# 1 that is treated as rounding (see bbsrgeo_check_share_sums() and
-# renormalize_forward_shares()).
-SHARE_SUM_TOLERANCE <- 0.01
-
-# Slack for comparing a share sum's deviation against SHARE_SUM_TOLERANCE: a
-# deviation of exactly the tolerance is not one, but three shares of 0.33
-# deviate from 1 by 0.010000000000000009 in floating point. Any value far above
-# floating-point error (~1e-16) and far below the data's resolution works.
-SHARE_SUM_FLOAT_SLACK <- 1e-9
-
-# Smallest relative difference between the counts (`area_old` etc.) of a
-# group's rows that is read as a real difference, not rounding noise.
-COUNT_DIFFERENCE_TOLERANCE <- 1e-8
-
-# Largest rounding error of one count (`area_old` etc.) that is assumed: half
-# of the coarsest resolution observed, 0.1 (the 1990-2000 population counts).
-# Used to bound how far `count / total` may lie from a share (see
-# bbsrgeo_check_count_shares()).
-COUNT_RESOLUTION <- 0.05
-
-# Whether a share sum deviates from 1 by more than SHARE_SUM_TOLERANCE.
-share_sum_deviates <- function(sums) {
-  abs(sums - 1) - SHARE_SUM_TOLERANCE > SHARE_SUM_FLOAT_SLACK
-}
-
 # Examples a check names per finding item before cutting the list off.
 MAX_FINDING_EXAMPLES <- 5
 
