@@ -35,9 +35,9 @@ bbsr_crosswalk_read <- function(path) {
 #' The area-proportional shares of all target areas of an `ags_old` should
 #' sum to 1 per year transition (see Details in [bbsr_crosswalk_read()]). The
 #' BBSR source files, however, contain combinations where this is not the
-#' case. These are not introduced by this package and are surfaced here as one
-#' warning that counts them by observed pattern (see the Share deviation entry
-#' in `GLOSSARY.md`), without stating a cause.
+#' case. They are surfaced here as one warning that counts them by the pattern
+#' observed in the rows (see "Share deviation" in `GLOSSARY.md`), without
+#' stating a cause.
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
 #' @return `data`, unchanged, invisibly.
@@ -109,10 +109,7 @@ bbsrgeo_check_share_sums <- function(data) {
       nrow(off)
     ),
     stats::setNames(lines, rep("*", length(lines))),
-    i = paste(
-      "These are share deviations in the BBSR file; please check the original",
-      "file if in doubt."
-    )
+    i = "Please check the original file if in doubt."
   ))
   invisible(data)
 }

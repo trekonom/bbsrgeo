@@ -277,6 +277,11 @@ test_that("any other deviation is named as such", {
   )
 })
 
+test_that("a share of 1 on every row with equal counts is 'other'", {
+  d <- share_rows("01001000", c(1, 1))
+  expect_warning(bbsrgeo_check_share_sums(d), "1 combination.*other")
+})
+
 test_that("the warning does not name a cause and asks to check the file", {
   d <- share_rows("07135000", 0.962)
   w <- tryCatch(bbsrgeo_check_share_sums(d), warning = conditionMessage)
