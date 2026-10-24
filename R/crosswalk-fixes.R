@@ -51,7 +51,7 @@ bbsr_crosswalk_fix <- function(crosswalk) {
       crosswalk$year_to == fix$year_to &
       crosswalk$ags_old == fix$ags_old &
       crosswalk$ags_new == fix$ags_new
-    if (!any(relevant)) {
+    if (!any(relevant, na.rm = TRUE)) {
       next
     }
     matches <- which(relevant & crosswalk$name_old == fix$name_old)

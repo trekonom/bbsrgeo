@@ -1,6 +1,6 @@
 # A function that documents known crosswalk bugs and fixes them before conversion
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 Raised by the maintainer after the miscoded district row (shares-from-counts
@@ -96,3 +96,14 @@ and ADR 0001 is unaffected.
 - Detecting new bugs: `name_old` check (issue 01) and shares-vs-counts check (shares-from-counts issue 02).
 - Contacting BBSR.
 
+
+## Resolution
+
+Implemented in `R/crosswalk-fixes.R` (`crosswalk_fixes`, `bbsr_crosswalk_fix()`)
+and `bbsr_crosswalk_read(fix = TRUE)`. Deviations from the brief: the table has
+no `level` column, because the crosswalk tibble has none; a fix is relevant only
+where the crosswalk contains its transition and both codes (the municipal files
+share the 2011 -> 2012 transition and otherwise reported a false "not
+applied"). Measured on the download of 2026-10-24: all four sums (07231000 and
+07235000, area and population) are 1.000000 after the fix. No `GLOSSARY.md`
+entry: the term "source-data fix" is not used in the code.

@@ -27,6 +27,7 @@
 #'   average when converting ratios, see [harmonize_regions()]).
 #' @export
 bbsr_crosswalk_read <- function(path, fix = TRUE) {
+  stopifnot(is.logical(fix), length(fix) == 1, !is.na(fix))
   data <- purrr::map_dfr(path, bbsrgeo_read_file)
   if (fix) {
     data <- bbsr_crosswalk_fix(data)
