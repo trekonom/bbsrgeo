@@ -95,6 +95,16 @@ their share. Suitable for ratios and indicators (e.g. unemployment
 rate, population per km²).
 }
 
+For \code{type = "absolute"} in the forward direction, the shares of one source
+AGS (\code{ags_old}) in a transition are expected to sum to 1. Where they
+deviate by more than 0.01 (e.g. BBSR's annual districts crosswalk has
+self-mapping rows with \code{share_population} 0.017 for 07137000 in
+2014 -> 2015), the shares are renormalized to sum to 1, so no part of a
+count is lost, and a warning names the affected AGS and transitions. The
+deviation is in the crosswalk, not in \code{data}. \code{type = "ratio"} is not
+affected (its weights are normalized anyway), and backcasting is left as
+is, since shares are not expected to sum to 1 per \code{ags_new}.
+
 If the crosswalk is of kind \code{"annual"} and \code{target_year} is more than one
 year-step away, the year-to-year crosswalks are chained automatically
 (provided the chain is unbroken). With a \code{"conversion_*"} crosswalk, the

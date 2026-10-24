@@ -18,6 +18,16 @@
 #'   their share. Suitable for ratios and indicators (e.g. unemployment
 #'   rate, population per km²).
 #'
+#' For `type = "absolute"` in the forward direction, the shares of one source
+#' AGS (`ags_old`) in a transition are expected to sum to 1. Where they
+#' deviate by more than 0.01 (e.g. BBSR's annual districts crosswalk has
+#' self-mapping rows with `share_population` 0.017 for 07137000 in
+#' 2014 -> 2015), the shares are renormalized to sum to 1, so no part of a
+#' count is lost, and a warning names the affected AGS and transitions. The
+#' deviation is in the crosswalk, not in `data`. `type = "ratio"` is not
+#' affected (its weights are normalized anyway), and backcasting is left as
+#' is, since shares are not expected to sum to 1 per `ags_new`.
+#'
 #' If the crosswalk is of kind `"annual"` and `target_year` is more than one
 #' year-step away, the year-to-year crosswalks are chained automatically
 #' (provided the chain is unbroken). With a `"conversion_*"` crosswalk, the
@@ -124,10 +134,18 @@ harmonize_regions_impl <- function(data, crosswalk, ags_col, year_col,
   )
   base <- dplyr::bind_cols(base, data[value_cols])
 
+  crosswalk_forward <- crosswalk
+  if (type == "absolute") {
+    crosswalk_forward <- renormalize_forward_shares(
+      crosswalk, paste0("share_", weight),
+      min(base$..year), target_year_resolved
+    )
+  }
+
   groups <- split(base, base$..year)
   result <- purrr::map_dfr(groups, function(group) {
     harmonize_path(
-      group, crosswalk, value_cols, type, weight,
+      group, crosswalk, crosswalk_forward, value_cols, type, weight,
       group$..year[[1]], target_year_resolved, allow_backcast
     )
   })
@@ -139,8 +157,8 @@ harmonize_regions_impl <- function(data, crosswalk, ags_col, year_col,
   result[, col_names]
 }
 
-harmonize_path <- function(group, crosswalk, value_cols, type, weight,
-                            start_year, target_year, allow_backcast) {
+harmonize_path <- function(group, crosswalk, crosswalk_forward, value_cols, type,
+                            weight, start_year, target_year, allow_backcast) {
   if (start_year == target_year) {
     return(group)
   }
@@ -165,6 +183,8 @@ harmonize_path <- function(group, crosswalk, value_cols, type, weight,
       "conversion BBSR crosswalks are designed for."
     ))
   }
+
+  crosswalk <- if (forward) crosswalk_forward else crosswalk
 
   direct <- crosswalk[
     crosswalk$year_from == (if (forward) start_year else target_year) &
@@ -260,4 +280,42 @@ harmonize_step <- function(group, step_crosswalk, value_cols, type, weight, forw
   }
 
   dplyr::rename(result, ..ags = "..ags_target")
+}
+
+# Renormalizes `share_col` per ags_old/year_from/year_to so that each group sums
+# to 1, where it deviates by more than SHARE_SUM_TOLERANCE (groups summing to 0
+# are left as they are). Warns once for the transitions that conversion from
+# `from_year` to `to_year` passes through.
+renormalize_forward_shares <- function(crosswalk, share_col, from_year, to_year) {
+  key <- paste(crosswalk$ags_old, crosswalk$year_from, crosswalk$year_to)
+  sums <- stats::ave(crosswalk[[share_col]], key, FUN = function(x) sum(x, na.rm = TRUE))
+  off <- !is.na(sums) & sums > 0 & abs(sums - 1) > SHARE_SUM_TOLERANCE
+  if (!any(off)) {
+    return(crosswalk)
+  }
+
+  in_range <- off & crosswalk$year_from >= from_year & crosswalk$year_to <= to_year
+  affected <- unique(data.frame(
+    ags = crosswalk$ags_old[in_range], year_from = crosswalk$year_from[in_range],
+    year_to = crosswalk$year_to[in_range], share_sum = sums[in_range]
+  ))
+  if (nrow(affected) > 0) {
+    affected <- affected[order(affected$ags, affected$year_from), , drop = FALSE]
+    shown <- utils::head(affected, 5)
+    rlang::warn(sprintf(
+      paste(
+        "The crosswalk's %s for %d ags_old/transition combination(s) do not sum",
+        "to 1 (tolerance %s). They were renormalized so that no part of an",
+        "absolute value is lost. The inconsistency is in the BBSR crosswalk,",
+        "not in `data`. Affected (first %d): %s"
+      ),
+      share_col, nrow(affected), SHARE_SUM_TOLERANCE, nrow(shown),
+      paste(sprintf(
+        "%s (%d -> %d, sum %.3f)", shown$ags, shown$year_from, shown$year_to, shown$share_sum
+      ), collapse = "; ")
+    ))
+  }
+
+  crosswalk[[share_col]][off] <- crosswalk[[share_col]][off] / sums[off]
+  crosswalk
 }

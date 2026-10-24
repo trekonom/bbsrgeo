@@ -13,7 +13,8 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
     skip("Could not download/read the BBSR area crosswalk (offline or BBSR unreachable).")
   }
 
-  converted <- harmonize_regions(
+  # Expected warning: renormalization of the crosswalk's off-1 shares.
+  converted <- suppressWarnings(harmonize_regions(
     popregio,
     crosswalk = crosswalk,
     ags_col = "ags",
@@ -23,30 +24,14 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
     weight = "population",
     target_year = "current",
     level = "districts"
-  )
+  ))
   converted$kreiskennziffer <- substr(converted$ags, 1, 5)
   n_current_districts <- length(unique(converted$kreiskennziffer))
 
-  # A handful of transitions in BBSR's own published annual crosswalk have
-  # a share_population that sums to far less than 1 for a self-mapping
-  # (unchanged) district - e.g. AGS 07137000 "Mayen-Koblenz" 2014->2015 and
-  # 2015->2016 carry share_population ~0.017 instead of 1.0. This is a
-  # known data-quality issue in the BBSR source file itself (already
-  # surfaced as a warning by bbsr_crosswalk_read()'s own share-sum check),
-  # not a bug in harmonize_regions() - any district whose conversion chain
-  # passes through such a transition is excluded from the comparison
-  # below, but the count is asserted to stay small so a broader systemic
-  # problem would still be caught.
-  share_sums <- stats::aggregate(
-    share_population ~ ags_old + year_from + year_to,
-    crosswalk,
-    sum,
-    na.rm = TRUE
-  )
-  affected_kreiskennziffer <- unique(substr(
-    share_sums$ags_old[abs(share_sums$share_population - 1) > 0.01],
-    1, 5
-  ))
+  # BBSR's annual crosswalk has self-mapping rows whose share_population sums
+  # to far less than 1 (e.g. 07137000 Mayen-Koblenz, 0.017, 2014->2015 and
+  # 2015->2016). harmonize_regions() renormalizes them and warns (issue 07), so
+  # no district is excluded from the comparison below.
 
   # popinkar is bundled with the package (see R/data.R,
   # data-raw/popinkar.R) - no INKAR API call needed here.
@@ -83,7 +68,6 @@ test_that("harmonize_regions() output for popregio matches INKAR (independent so
       info = paste("year", check_year)
     )
 
-    compared <- compared[!compared$kreiskennziffer %in% affected_kreiskennziffer, ]
     rel_diff <- abs(compared$population_total_ours - compared$population_total_inkar) /
       compared$population_total_inkar
 

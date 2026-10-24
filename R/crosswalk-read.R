@@ -48,7 +48,7 @@ bbsrgeo_check_share_sums <- function(data) {
     area_sum = sum(.data$share_area, na.rm = TRUE),
     .groups = "drop"
   )
-  off <- sums[abs(sums$area_sum - 1) > 0.01, , drop = FALSE]
+  off <- sums[abs(sums$area_sum - 1) > SHARE_SUM_TOLERANCE, , drop = FALSE]
   if (nrow(off) > 0) {
     rlang::warn(sprintf(
       paste(

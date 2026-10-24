@@ -170,3 +170,91 @@ test_that("harmonize_regions_districts and harmonize_regions_municipalities retu
   )
   expect_equal(a, b)
 })
+
+# Issue 07: BBSR's annual districts crosswalk has self-mapping rows whose
+# share_population sums to far less than 1 (07137000 Mayen-Koblenz, 0.017, for
+# 2014->2015 and 2015->2016). Without renormalization the chained absolute
+# count shrinks to 0.017^2 of the input.
+test_that("absolute conversion renormalizes off-1 shares of a self-mapping AGS across a chain", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 2020L, 2021L, share_population = 0.017),
+    crosswalk_row("01000001", "01000001", 2021L, 2022L, share_population = 0.017)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, population = 1000)
+
+  # Expected warning: the crosswalk's shares were renormalized.
+  res <- suppressWarnings(harmonize_regions(
+    data, crosswalk, "ags", "year", "population",
+    type = "absolute", weight = "population", target_year = 2022L, level = "districts"
+  ))
+  expect_equal(res$population, 1000)
+})
+
+test_that("absolute conversion distributes the full count proportionally when split shares sum to 0.9", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000002", 2020L, 2021L, share_population = 0.6),
+    crosswalk_row("01000001", "01000003", 2020L, 2021L, share_population = 0.3)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, population = 900)
+
+  res <- suppressWarnings(harmonize_regions(
+    data, crosswalk, "ags", "year", "population",
+    type = "absolute", weight = "population", target_year = 2021L, level = "districts"
+  ))
+  expect_equal(res$population[res$ags == "01000002"], 600)
+  expect_equal(res$population[res$ags == "01000003"], 300)
+})
+
+test_that("shares within tolerance of 1 are left untouched and do not warn", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000002", 2020L, 2021L, share_population = 0.595),
+    crosswalk_row("01000001", "01000003", 2020L, 2021L, share_population = 0.40)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, population = 1000)
+
+  expect_no_warning(res <- harmonize_regions(
+    data, crosswalk, "ags", "year", "population",
+    type = "absolute", weight = "population", target_year = 2021L, level = "districts"
+  ))
+  expect_equal(res$population[res$ags == "01000002"], 595)
+  expect_equal(res$population[res$ags == "01000003"], 400)
+})
+
+test_that("renormalization warns once, naming the affected AGS, the transition and the crosswalk as cause", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 2020L, 2021L, share_population = 0.017),
+    crosswalk_row("01000001", "01000001", 2021L, 2022L, share_population = 0.017)
+  )
+  data <- tibble::tibble(ags = "01000001", year = c(2020L, 2021L), population = 1000)
+
+  warnings <- list()
+  withCallingHandlers(
+    harmonize_regions(
+      data, crosswalk, "ags", "year", "population",
+      type = "absolute", weight = "population", target_year = 2022L, level = "districts"
+    ),
+    warning = function(w) {
+      warnings[[length(warnings) + 1L]] <<- conditionMessage(w)
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_length(warnings, 1L)
+  expect_match(warnings[[1]], "01000001", fixed = TRUE)
+  expect_match(warnings[[1]], "2020 -> 2021", fixed = TRUE)
+  expect_match(warnings[[1]], "2021 -> 2022", fixed = TRUE)
+  expect_match(warnings[[1]], "crosswalk")
+})
+
+test_that("type = 'ratio' ignores off-1 shares and does not warn about them", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 2020L, 2021L, share_population = 0.017),
+    crosswalk_row("01000001", "01000001", 2021L, 2022L, share_population = 0.017)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 2020L, rate = 4.2)
+
+  expect_no_warning(res <- harmonize_regions(
+    data, crosswalk, "ags", "year", "rate",
+    type = "ratio", weight = "population", target_year = 2022L, level = "districts"
+  ))
+  expect_equal(res$rate, 4.2)
+})

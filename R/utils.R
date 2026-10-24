@@ -39,3 +39,8 @@ normalize_ags <- function(x) {
 
   ifelse(is.na(ags_num), NA_character_, sprintf("%08.0f", ags_num))
 }
+
+# Largest deviation of a crosswalk's shares per ags_old/transition from a sum of
+# 1 that is treated as rounding (see bbsrgeo_check_share_sums() and
+# renormalize_forward_shares()).
+SHARE_SUM_TOLERANCE <- 0.01
