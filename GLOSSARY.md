@@ -55,7 +55,7 @@ The quantity the shares are measured in: population, area, or employment.
 _Avoid_: weight (alone), allocation key
 
 **Share deviation**:
-A transition where an old unit's shares do not sum to 1. Not introduced by the package; causes seen in the source files are rounding, a share of 1 on every row for units without population, and rows that look like errors in the BBSR file.
+A transition where an old unit's shares do not sum to 1 by more than 1% (a sum exactly at the tolerance, such as three shares of 0.33, is rounding and not a deviation). Not introduced by the package. `bbsr_crosswalk_read()` names the pattern observed in the rows, without stating a cause: (a) a share of 1 on every target row of a multi-row group, with counts that differ between rows; (b) a single target row with a share below 1; (c) any other. `harmonize_regions()` handles these by renormalization.
 _Avoid_: share error, bad shares
 
 **Unmapped unit**:

@@ -531,7 +531,7 @@ renormalize_forward_shares <- function(
     # so they are not read as parts (case 3); neither are rounding-noise
     # differences.
     varies <- stats::ave(basis, group_key, FUN = function(v) {
-      diff(range(v)) > 1e-8 * max(abs(v))
+      diff(range(v)) > COUNT_DIFFERENCE_TOLERANCE * max(abs(v))
     }) ==
       1
     non_negative <- stats::ave(basis, group_key, FUN = function(v) {

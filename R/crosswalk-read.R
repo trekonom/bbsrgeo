@@ -48,7 +48,7 @@ bbsrgeo_check_share_sums <- function(data) {
     names(data)
   )
   differs <- function(v) {
-    !anyNA(v) && diff(range(v)) > 1e-8 * max(abs(v))
+    !anyNA(v) && diff(range(v)) > COUNT_DIFFERENCE_TOLERANCE * max(abs(v))
   }
   summary <- dplyr::summarise(
     dplyr::group_by(data, .data$ags_old, .data$year_from, .data$year_to),

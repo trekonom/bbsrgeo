@@ -47,9 +47,17 @@ normalize_ags <- function(x) {
 # renormalize_forward_shares()).
 SHARE_SUM_TOLERANCE <- 0.01
 
-# Whether a share sum deviates from 1 by more than SHARE_SUM_TOLERANCE. A
-# deviation of exactly the tolerance is not one: three shares of 0.33 deviate
-# from 1 by 0.010000000000000009 in floating point.
+# Slack for comparing a share sum's deviation against SHARE_SUM_TOLERANCE: a
+# deviation of exactly the tolerance is not one, but three shares of 0.33
+# deviate from 1 by 0.010000000000000009 in floating point. Any value far above
+# floating-point error (~1e-16) and far below the data's resolution works.
+SHARE_SUM_FLOAT_SLACK <- 1e-9
+
+# Smallest relative difference between the counts (`area_old` etc.) of a
+# group's rows that is read as a real difference, not rounding noise.
+COUNT_DIFFERENCE_TOLERANCE <- 1e-8
+
+# Whether a share sum deviates from 1 by more than SHARE_SUM_TOLERANCE.
 share_sum_deviates <- function(sums) {
-  abs(sums - 1) - SHARE_SUM_TOLERANCE > 1e-9
+  abs(sums - 1) - SHARE_SUM_TOLERANCE > SHARE_SUM_FLOAT_SLACK
 }
