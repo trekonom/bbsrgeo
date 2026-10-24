@@ -46,3 +46,10 @@ normalize_ags <- function(x) {
 # 1 that is treated as rounding (see bbsrgeo_check_share_sums() and
 # renormalize_forward_shares()).
 SHARE_SUM_TOLERANCE <- 0.01
+
+# Whether a share sum deviates from 1 by more than SHARE_SUM_TOLERANCE. A
+# deviation of exactly the tolerance is not one: three shares of 0.33 deviate
+# from 1 by 0.010000000000000009 in floating point.
+share_sum_deviates <- function(sums) {
+  abs(sums - 1) - SHARE_SUM_TOLERANCE > 1e-9
+}

@@ -516,7 +516,7 @@ renormalize_forward_shares <- function(
     stats::ave(x, group_key, FUN = function(v) sum(v, na.rm = TRUE))
   }
   sums <- group_sum(crosswalk[[share_col]])
-  off <- !is.na(sums) & sums > 0 & abs(sums - 1) > SHARE_SUM_TOLERANCE
+  off <- !is.na(sums) & sums > 0 & share_sum_deviates(sums)
   if (!any(off)) {
     return(crosswalk)
   }

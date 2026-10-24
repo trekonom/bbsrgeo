@@ -208,5 +208,90 @@ test_that("the real BBSR files have no header rows among their data rows", {
     expect_equal(nrow(d), expected_rows[[name]], label = paste("rows in", name))
     # The label rows formed an ags_old = NA group that warned.
     expect_false(any(grepl("ags_old = 'NA'", warnings)), label = name)
+
+    # Share deviations measured on the same downloads: the 1990-2000 file has
+    # 4 groups with a share of 1 on every row, the district file 4 single-row
+    # groups below 1; 09377444 (2016, sum 0.99) is rounding and does not warn.
+    expected_pattern <- c(
+      municipalities_1990 = "4 combination.*share of 1 on every target row",
+      districts = "4 combination.*single target row"
+    )[name]
+    if (is.na(expected_pattern)) {
+      expect_length(warnings, 0)
+    } else {
+      expect_length(warnings, 1)
+      expect_match(warnings, expected_pattern, label = name)
+    }
   }
+})
+
+# Constructed crosswalk rows for bbsrgeo_check_share_sums(): `ags` is the old
+# unit, one target row per element of `share`.
+share_rows <- function(ags, share, area_old = rep(10, length(share))) {
+  tibble::tibble(
+    ags_old = ags,
+    ags_new = sprintf("%s%d", substr(ags, 1, 7), seq_along(share)),
+    year_from = 2000L,
+    year_to = 2001L,
+    share_area = share,
+    share_population = share,
+    area_old = area_old,
+    population_old = area_old
+  )
+}
+
+test_that("a share sum exactly at the tolerance is not reported", {
+  d <- share_rows("01001000", rep(0.33, 3))
+  expect_no_warning(bbsrgeo_check_share_sums(d))
+})
+
+test_that("a clean group does not warn", {
+  d <- share_rows("01001000", c(0.4, 0.6))
+  expect_no_warning(bbsrgeo_check_share_sums(d))
+})
+
+test_that("a share of 1 on every row with differing counts is named as such", {
+  d <- rbind(
+    share_rows("12039430", c(1, 1), area_old = c(15.099, 6.471)),
+    share_rows("12043470", c(1, 1), area_old = c(3, 4))
+  )
+  expect_warning(
+    bbsrgeo_check_share_sums(d),
+    "2 combination.*share of 1 on every target row.*counts that differ.*ags_old = '12039430'"
+  )
+})
+
+test_that("a single row with a share below 1 is named as such", {
+  d <- share_rows("07135000", 0.962)
+  expect_warning(
+    bbsrgeo_check_share_sums(d),
+    "1 combination.*single target row.*ags_old = '07135000'"
+  )
+})
+
+test_that("any other deviation is named as such", {
+  d <- share_rows("01001000", c(0.5, 0.3))
+  expect_warning(
+    bbsrgeo_check_share_sums(d),
+    "1 combination.*other.*ags_old = '01001000'"
+  )
+})
+
+test_that("the warning does not name a cause and asks to check the file", {
+  d <- share_rows("07135000", 0.962)
+  w <- tryCatch(bbsrgeo_check_share_sums(d), warning = conditionMessage)
+  expect_false(grepl("caused by", w))
+  expect_match(w, "check the original file")
+})
+
+test_that("each pattern present is counted and exemplified once", {
+  d <- rbind(
+    share_rows("12039430", c(1, 1), area_old = c(15, 6)),
+    share_rows("07135000", 0.962),
+    share_rows("01001000", c(0.5, 0.3))
+  )
+  w <- tryCatch(bbsrgeo_check_share_sums(d), warning = conditionMessage)
+  expect_match(w, "12039430")
+  expect_match(w, "07135000")
+  expect_match(w, "01001000")
 })

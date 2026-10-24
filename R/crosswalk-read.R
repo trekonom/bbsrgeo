@@ -34,37 +34,86 @@ bbsr_crosswalk_read <- function(path) {
 #'
 #' The area-proportional shares of all target areas of an `ags_old` should
 #' sum to 1 per year transition (see Details in [bbsr_crosswalk_read()]). The
-#' BBSR source files, however, occasionally contain combinations where this
-#' is not the case (e.g. minor boundary corrections without a documented
-#' counterpart) - this is not an inconsistency introduced by this package
-#' but by the source data, and is surfaced here as a warning.
+#' BBSR source files, however, contain combinations where this is not the
+#' case. These are not introduced by this package and are surfaced here as one
+#' warning that counts them by observed pattern (see the Share deviation entry
+#' in `GLOSSARY.md`), without stating a cause.
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
 #' @return `data`, unchanged, invisibly.
 #' @noRd
 bbsrgeo_check_share_sums <- function(data) {
-  sums <- dplyr::summarise(
+  count_cols <- intersect(
+    c("area_old", "population_old", "employment_old"),
+    names(data)
+  )
+  differs <- function(v) {
+    !anyNA(v) && diff(range(v)) > 1e-8 * max(abs(v))
+  }
+  summary <- dplyr::summarise(
     dplyr::group_by(data, .data$ags_old, .data$year_from, .data$year_to),
+    n_rows = dplyr::n(),
     area_sum = sum(.data$share_area, na.rm = TRUE),
+    all_one = all(abs(.data$share_area - 1) <= SHARE_SUM_TOLERANCE),
+    dplyr::across(
+      dplyr::all_of(count_cols),
+      differs,
+      .names = "differs_{.col}"
+    ),
     .groups = "drop"
   )
-  off <- sums[abs(sums$area_sum - 1) > SHARE_SUM_TOLERANCE, , drop = FALSE]
-  if (nrow(off) > 0) {
-    rlang::warn(sprintf(
-      paste(
-        "%d ags_old/year_from combination(s) have a sum of area shares",
-        "that deviates from 1 by more than 1%% (e.g. ags_old = '%s',",
-        "year_from = %d: sum = %.3f). This can be due to rounding, but is",
-        "more often caused by inconsistencies in the BBSR source file",
-        "itself (e.g. missing counterparts for minor boundary corrections)",
-        "- please check the original file if in doubt."
-      ),
-      nrow(off),
-      off$ags_old[1],
-      off$year_from[1],
-      off$area_sum[1]
-    ))
+  summary$counts_differ <- Reduce(
+    `|`,
+    summary[paste0("differs_", count_cols)],
+    FALSE
+  )
+  off <- summary[share_sum_deviates(summary$area_sum), , drop = FALSE]
+  if (nrow(off) == 0) {
+    return(invisible(data))
   }
+
+  # Patterns are named from what the rows look like, not from a cause.
+  off$pattern <- dplyr::case_when(
+    off$n_rows > 1 & off$all_one & off$counts_differ ~ "a",
+    off$n_rows == 1 & off$area_sum < 1 ~ "b",
+    TRUE ~ "c"
+  )
+  labels <- c(
+    a = paste(
+      "a share of 1 on every target row of a multi-row group, with counts",
+      "that differ between rows"
+    ),
+    b = "a single target row with a share below 1",
+    c = "other"
+  )
+  lines <- purrr::map_chr(
+    intersect(names(labels), off$pattern),
+    function(p) {
+      rows <- off[off$pattern == p, , drop = FALSE]
+      sprintf(
+        "%d combination(s): %s (e.g. ags_old = '%s', year_from = %d: sum = %.3f)",
+        nrow(rows),
+        labels[[p]],
+        rows$ags_old[1],
+        rows$year_from[1],
+        rows$area_sum[1]
+      )
+    }
+  )
+  rlang::warn(c(
+    sprintf(
+      paste(
+        "%d ags_old/year_from combination(s) have a sum of area shares that",
+        "deviates from 1 by more than 1%%. By pattern:"
+      ),
+      nrow(off)
+    ),
+    stats::setNames(lines, rep("*", length(lines))),
+    i = paste(
+      "These are share deviations in the BBSR file; please check the original",
+      "file if in doubt."
+    )
+  ))
   invisible(data)
 }
 
