@@ -47,7 +47,7 @@ The build script discards rows without notice in two places: the valid-AGS filte
 - Changing which years or districts `ltcregio` covers.
 - Adding automated tests for `data-raw/` scripts.
 
-## Resolution
+## Implemented, awaiting the human run
 
 `data-raw/ltcregio.R` now aborts, naming the AGS and years, on a year missing
 from the valid-AGS lookup and on any row dropped by the valid-AGS filter or the
