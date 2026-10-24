@@ -590,3 +590,74 @@ test_that("type = 'ratio' ignores off-1 shares and does not warn about them", {
   )
   expect_equal(res$rate, 4.2)
 })
+
+test_that("harmonize_regions drops and warns about an unmapped AGS in the target year", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 2020L, 2021L),
+    crosswalk_row("01000002", "01000002", 2020L, 2021L)
+  )
+  data <- tibble::tibble(
+    ags = c("01000001", "01000002", "01000009", "01000001", "01000009"),
+    year = c(2020L, 2020L, 2020L, 2021L, 2021L),
+    population = c(10, 20, 30, 11, 33)
+  )
+
+  # 01000009 is unknown to the crosswalk: it is dropped (with a warning) in
+  # 2020 and, under the same rule, in the target year 2021 - two warnings.
+  warnings <- testthat::capture_warnings(
+    res <- harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      target_year = 2021L,
+      level = "districts"
+    )
+  )
+  expect_length(warnings, 2)
+  expect_true(all(grepl("01000009", warnings)))
+
+  expect_false("01000009" %in% res$ags)
+  expect_equal(res$population[res$ags == "01000001" & res$year == 2021L], 11)
+})
+
+test_that("harmonize_regions passes mapped target-year rows through unchanged", {
+  crosswalk <- crosswalk_row("01000001", "01000001", 2020L, 2021L)
+  data <- tibble::tibble(
+    ags = "01000001",
+    year = 2021L,
+    population = 42
+  )
+
+  expect_no_warning(
+    res <- harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      target_year = 2021L,
+      level = "districts"
+    )
+  )
+  expect_equal(res$population, 42)
+})
+
+test_that("harmonize_regions leaves target-year rows alone when no transition leads into the target year", {
+  crosswalk <- crosswalk_row("01000001", "01000001", 2020L, 2021L)
+  data <- tibble::tibble(ags = "01000009", year = 2020L, population = 5)
+
+  expect_no_warning(
+    res <- harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      target_year = 2020L,
+      level = "districts"
+    )
+  )
+  expect_equal(res$ags, "01000009")
+})

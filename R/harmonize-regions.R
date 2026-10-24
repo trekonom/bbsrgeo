@@ -34,6 +34,12 @@
 #' with a missing value are left out of the weighted mean, and the result is
 #' `NA` only if all of them are missing.
 #'
+#' An AGS in `data` that the crosswalk does not know is dropped with a
+#' warning, in every year including `target_year`. For rows already at
+#' `target_year`, "known" means the AGS occurs as `ags_new` in a transition
+#' into `target_year`; if the crosswalk has no such transition, those rows are
+#' kept as they are.
+#'
 #' If the crosswalk is of kind `"annual"` and `target_year` is more than one
 #' year-step away, the year-to-year crosswalks are chained automatically
 #' (provided the chain is unbroken). With a `"conversion_*"` crosswalk, the
@@ -246,7 +252,7 @@ harmonize_path <- function(
   allow_backcast
 ) {
   if (start_year == target_year) {
-    return(group)
+    return(drop_unmapped_target_year(group, crosswalk, target_year))
   }
 
   forward <- start_year < target_year
@@ -375,14 +381,7 @@ harmonize_step <- function(
 
   joined <- dplyr::inner_join(group, crosswalk_join, by = "..ags")
 
-  missing <- setdiff(unique(group$..ags), unique(joined$..ags))
-  if (length(missing) > 0) {
-    rlang::warn(sprintf(
-      "%d AGS value(s) without a matching crosswalk entry for this transition were dropped: %s",
-      length(missing),
-      paste(utils::head(missing, 5), collapse = ", ")
-    ))
-  }
+  warn_unmapped(setdiff(unique(group$..ags), unique(joined$..ags)))
 
   if (type == "absolute") {
     result <- dplyr::group_by(joined, .data$..ags_target, .data$..year)
@@ -408,6 +407,30 @@ harmonize_step <- function(
   }
 
   dplyr::rename(result, ..ags = "..ags_target")
+}
+
+warn_unmapped <- function(unmapped) {
+  if (length(unmapped) > 0) {
+    rlang::warn(sprintf(
+      "%d AGS value(s) without a matching crosswalk entry for this transition were dropped: %s",
+      length(unmapped),
+      paste(utils::head(unmapped, 5), collapse = ", ")
+    ))
+  }
+}
+
+# Rows already at the target year need no conversion, but face the same
+# unmapped-unit rule: an AGS is mapped if it is an `ags_new` of a transition
+# into `target_year`. Without any such transition nothing can be judged, so
+# the rows are kept.
+drop_unmapped_target_year <- function(group, crosswalk, target_year) {
+  into_target <- crosswalk$ags_new[crosswalk$year_to == target_year]
+  if (length(into_target) == 0) {
+    return(group)
+  }
+  mapped <- group$..ags %in% into_target
+  warn_unmapped(unique(group$..ags[!mapped]))
+  group[mapped, , drop = FALSE]
 }
 
 # BBSR only offers employment as a weight basis from 1997 onward; the earlier

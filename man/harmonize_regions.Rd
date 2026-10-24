@@ -113,6 +113,12 @@ partial sum would understate the total. With \code{type = "ratio"}, old units
 with a missing value are left out of the weighted mean, and the result is
 \code{NA} only if all of them are missing.
 
+An AGS in \code{data} that the crosswalk does not know is dropped with a
+warning, in every year including \code{target_year}. For rows already at
+\code{target_year}, "known" means the AGS occurs as \code{ags_new} in a transition
+into \code{target_year}; if the crosswalk has no such transition, those rows are
+kept as they are.
+
 If the crosswalk is of kind \code{"annual"} and \code{target_year} is more than one
 year-step away, the year-to-year crosswalks are chained automatically
 (provided the chain is unbroken). With a \code{"conversion_*"} crosswalk, the
