@@ -19,7 +19,7 @@ are in `dev/`. Scratch scripts go in `dev/scratch/` (gitignored, not formatted; 
 `testthat`/`pkgdown` are not on `Suggests`, so prefer base tools already listed
 in `DESCRIPTION`.
 
-- Format code: `dev/format.sh` (finds `air` even when it is not on the `PATH`; `--check` only reports). The pre-commit hook in `.githooks/` runs the check and the pre-push hook runs the full test suite (about a minute); after a fresh clone enable both with `git config core.hooksPath .githooks`
+- Format code: `dev/format.sh` (finds `air` even when it is not on the `PATH`; `--check` only reports). The pre-commit hook in `.githooks/` runs the check and `dev/check-refs.R` (fails when a doc names a file or function that no longer exists) and the pre-push hook runs the full test suite (about a minute); after a fresh clone enable both with `git config core.hooksPath .githooks`
 - Run all tests: `Rscript dev/test-all.R` (lists any test that skipped)
 - Run a single test file: `Rscript dev/test-file.R tests/testthat/test-harmonize-regions.R`
   (a bare `testthat::test_file()` skips the network-guarded validation tests
@@ -70,8 +70,7 @@ shape (the crosswalk tibble):
 2. **Applying a crosswalk** (`R/harmonize-regions.R`, `R/conversion-path.R`,
    `R/check-regions.R`; `conversion-path.R` holds the transitions a conversion
    passes through and the unmapped-unit rule, shared by the other two):
-   - `harmonize_regions()` (dispatches to `harmonize_regions_districts()` /
-     `harmonize_regions_municipalities()`) takes a long panel dataset
+   - `harmonize_regions()` takes a long panel dataset
      (AGS + year + value column(s)) and re-expresses it on one target-year
      boundary. For `"annual"` crosswalks it chains single-year transitions
      year by year (`harmonize_path()` → `harmonize_step()`) when a direct
@@ -82,9 +81,9 @@ shape (the crosswalk tibble):
    - Forward conversion (older → newer boundary) is the default/intended use;
      backcasting (newer → older) requires `allow_backcast = TRUE` and emits a
      warning, since it's inherently less reliable.
-   - `check_regions()` is a pre-flight helper to surface AGS values in `data`
-     that the crosswalk won't recognize (would otherwise be silently dropped
-     by `harmonize_regions()`'s internal `inner_join`).
+   - `check_regions()` is a pre-flight helper: it follows the same transitions
+     as `harmonize_regions()` over the area units alone and reports the rows
+     the conversion would drop as unmapped units.
 
 AGS (Amtlicher Gemeindeschluessel) handling is centralized in
 `normalize_ags()` (`R/utils.R`): BBSR xlsx cells are inconsistently

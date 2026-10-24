@@ -8,7 +8,7 @@ Status: accepted (2026-10-24)
 as given. The absolute counts (`area_old`, `population_old`, `employment_old`)
 are used only for an `ags_old`/transition group whose shares sum off 1 by more
 than `SHARE_SUM_TOLERANCE`, in the order set out in
-`renormalize_forward_shares()`: area split for a zero basis, counts as parts
+`classify_share_deviations()`: area split for a zero basis, counts as parts
 when they differ between rows, otherwise renormalization with a warning. Shares
 are not recomputed from the counts for groups that sum to 1. Every group that
 does not sum to 1 is rescaled by default (sums within the tolerance only with a
