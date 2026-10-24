@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Refuse the commit when R code is not formatted with air.
+# Enabled by: git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/dev/format.sh" --check

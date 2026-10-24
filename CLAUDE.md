@@ -19,7 +19,7 @@ are in `dev/`. Scratch scripts go in `dev/scratch/` (gitignored). `devtools`/
 `testthat`/`pkgdown` are not on `Suggests`, so prefer base tools already listed
 in `DESCRIPTION`.
 
-- Format code: `dev/format.sh` (run before every commit/push; finds `air` even when it is not on the `PATH`; `--check` only reports)
+- Format code: `dev/format.sh` (finds `air` even when it is not on the `PATH`; `--check` only reports). The pre-commit hook in `.githooks/` runs the check; after a fresh clone enable it with `git config core.hooksPath .githooks`
 - Run all tests: `Rscript dev/test-all.R` (lists any test that skipped)
 - Run a single test file: `Rscript dev/test-file.R tests/testthat/test-harmonize-regions.R`
   (a bare `testthat::test_file()` skips the network-guarded validation tests

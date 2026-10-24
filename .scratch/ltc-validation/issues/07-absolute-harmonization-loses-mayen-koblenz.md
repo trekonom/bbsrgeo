@@ -86,7 +86,7 @@ In `type = "absolute"`, each transition multiplies values by `share_<weight>` an
 
 ## Resolution
 
-Root cause (confirmed): `harmonize_step()` multiplied values by the crosswalk shares as given; a self-mapping row with share 0.017, chained over 2014->2015 and 2015->2016, left 0.017^2 of the count. Reproduced by `dev/scratch/repro-07-synthetic.R` (1000 -> 0.289) and `dev/scratch/repro-07-real.R` (42 bad district-years for 07135/07137; both scripts are gitignored scratch).
+Root cause (confirmed): `harmonize_step()` multiplied values by the crosswalk shares as given; a self-mapping row with share 0.017, chained over 2014->2015 and 2015->2016, left 0.017^2 of the count. Reproduced before the fix with a synthetic two-transition crosswalk (1000 -> 0.289) and with real data (42 bad district-years for 07135/07137). The synthetic case is kept as a regression test in `tests/testthat/test-harmonize-regions.R` ("absolute conversion renormalizes off-1 shares of a self-mapping AGS across a chain"); the real-data comparison is `tests/testthat/test-validate-inkar.R`.
 
 Fix: `renormalize_forward_shares()` in `R/harmonize-regions.R`, called once per `harmonize_regions()` call for `type = "absolute"`. It renormalizes `share_<weight>` per `ags_old`/`year_from`/`year_to` when the sum deviates by more than `SHARE_SUM_TOLERANCE` (0.01, now shared with `bbsrgeo_check_share_sums()`), and warns once naming the AGS and transitions. Backcasting uses the original shares; `type = "ratio"` is untouched. Roxygen documents this.
 
