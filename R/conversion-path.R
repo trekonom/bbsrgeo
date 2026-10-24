@@ -72,8 +72,9 @@ conversion_steps <- function(
   }
 
   lapply(hop_years, function(j) {
-    from <- if (forward) j else j + 1L
-    to <- if (forward) j + 1L else j
+    # The crosswalk holds the transition j -> j + 1 in either direction.
+    from <- j
+    to <- j + 1L
     step <- transition(from, to)
     if (nrow(step) > 0) {
       return(step)
