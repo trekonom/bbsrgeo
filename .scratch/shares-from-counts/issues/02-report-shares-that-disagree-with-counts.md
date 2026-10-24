@@ -59,9 +59,18 @@ touch), `|count / total - share|` per row:
   bound. So the 1990-2000 deviations (up to 0.051) are rounding, and the bound
   is derived from the counts' resolution, not fitted to the shares.
 - Districts: one group exceeds the same bound by far: 07235000, 2011, whose
-  shares sum to 1.009 (area) and 1.007 (population). The largest part has a
-  share of 1 against a count share of 0.9908 (deviation 0.0092 area, 0.0070
-  population), the small part 0.0086 against 0.0092. Not investigated further.
+  shares sum to 1.009 (area) and 1.007 (population). Cause (maintainer, checked
+  against the district sheets 2010-2011 and 2011-2012): a miscoded `ags_old`.
+  The 2011 -> 2012 sheet has a row with `name_old` Bernkastel-Wittlich but
+  `ags_old` 07235000 (Trier-Saarburg), going to 07235000, with `area_old` 10.1
+  and `share_area` 0.00858. Bernkastel-Wittlich is 07231000: its own row in that
+  sheet sums to 0.991 (`area_old` 1168 against 1178 in 2010 -> 2011, a loss of
+  10.1 km2), and 10.1 / 1178 = 0.00858. So the row belongs to 07231000, and the
+  sum of 0.991 for 07231000 and 1.009 for 07235000 both come from it. With the
+  default renormalization (commit 46ad0a2) both groups are rescaled to 1:
+  Trier-Saarburg keeps its total (its own row and the miscoded row both map to
+  itself), but Bernkastel-Wittlich keeps all of its value instead of passing
+  0.86 % on to Trier-Saarburg.
   The municipal 2000-2010 population deviation of 0.0072 was not compared with
   the bound.
 - Item 3 (equal counts): skipped. They cannot be told from the unit's total
@@ -90,5 +99,6 @@ touch), `|count / total - share|` per row:
 
 **Out of scope:**
 - Changing how shares are used (ADR 0001) or correcting the BBSR data.
-- Investigating why 07235000 (2011) deviates.
+- Recoding the miscoded 07235000 (2011 -> 2012) row; see the triage comment. A
+  check of `name_old` against `ags_old` is a separate decision.
 
