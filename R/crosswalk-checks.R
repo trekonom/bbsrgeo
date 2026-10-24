@@ -7,7 +7,7 @@
 #' Reported as one warning, without a cause.
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
-#' @return A [finding()], or `NULL` when nothing is found.
+#' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
 bbsrgeo_check_names <- function(data) {
   inconsistent <- function(code_col, name_col) {
@@ -80,7 +80,7 @@ bbsrgeo_check_names <- function(data) {
 #' message; the conversion uses the shares as given (ADR 0001).
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
-#' @return A [finding()], or `NULL` when nothing is found.
+#' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
 bbsrgeo_check_count_shares <- function(data) {
   items <- list()
@@ -154,7 +154,7 @@ bbsrgeo_check_count_shares <- function(data) {
 #' stating a cause.
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
-#' @return A [finding()], or `NULL` when nothing is found.
+#' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
 bbsrgeo_check_share_sums <- function(data) {
   classified <- share_deviation_patterns(data)
