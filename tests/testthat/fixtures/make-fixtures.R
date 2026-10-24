@@ -209,4 +209,37 @@ writexl::write_xlsx(
   col_names = FALSE
 )
 
+# --- File 4: municipal "annual" file with a second header row -----------
+# The municipal files up to the 2015-2016 sheet of ref-gemeinden-2010-2020.xlsx
+# have a two-row header: row 1 the title, row 2 the column labels
+# ("Kennziffer", "Name", ...), checked with readxl::excel_sheets() and
+# readxl::read_excel() on the downloaded files. Later sheets have the single
+# header row of the other fixtures. Layout: 8 columns.
+sheet_two_row_header <- rbind(
+  c("Gemeinden, Stand 31.12.2000", rep(NA, 7)),
+  c(
+    "Kennziffer",
+    "Name",
+    "flächenprop.",
+    "bevölkerungsprop.",
+    "Fläche am 31.12.2000",
+    "Bevölkerung am 31.12.2000",
+    "Kennziffer",
+    "Name"
+  ),
+  c("1001000", "Town A", "1", "1", "56.7", "92.5", "1001000", "Town A"),
+  c("1002000", "Town B", "1", "1", "40", "30", "1002000", "Town B")
+)
+sheet_one_row_header <- raw(
+  c("1001000", "Town A", "1", "1", "56.7", "92550", "1001000", "Town A")
+)
+writexl::write_xlsx(
+  list(
+    "2000-2001" = as.data.frame(sheet_two_row_header),
+    "2016-2017" = as.data.frame(sheet_one_row_header)
+  ),
+  path = "tests/testthat/fixtures/ref-gemeinden-testfixture-kopfzeilen.xlsx",
+  col_names = FALSE
+)
+
 message("Fixtures written to tests/testthat/fixtures/")

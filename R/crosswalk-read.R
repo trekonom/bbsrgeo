@@ -166,6 +166,10 @@ bbsrgeo_read_sheet <- function(path, sheet, meta) {
   # Row 1 is the header; its text tells the 10-column layouts apart.
   header <- unlist(raw[1, ], use.names = FALSE)
   raw <- raw[-1, ]
+  # Municipal sheets up to 2015-2016 of ref-gemeinden-2010-2020.xlsx have a
+  # second header row of column labels ("Kennziffer" = AGS, "Name"); later
+  # sheets do not. Drop it by content, before the AGS is normalized.
+  raw <- raw[is.na(raw[[1]]) | raw[[1]] != "Kennziffer", ]
   n <- ncol(raw)
 
   # Since the 2022 sheet of ref-gemeinden-2020-2024.xlsx a 12-digit
