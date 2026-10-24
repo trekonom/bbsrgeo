@@ -76,3 +76,35 @@ test_that("bbsr_crosswalk_read can read multiple files at once", {
 test_that("bbsr_crosswalk_read aborts with a clear message for a missing file", {
   expect_error(bbsr_crosswalk_read("does-not-exist.xlsx"), "not found")
 })
+
+test_that("bbsrgeo_sheet_years parses two-digit end years in annual sheet names", {
+  meta <- list(kind = "annual", file_name = "ref-gemeinden-1990-2000.xlsx")
+
+  expect_equal(
+    bbsrgeo_sheet_years("1990-91", meta),
+    list(from = 1990L, to = 1991L)
+  )
+  expect_equal(
+    bbsrgeo_sheet_years("1996-97", meta),
+    list(from = 1996L, to = 1997L)
+  )
+  # Century rollover: the end year is the next year, not 1900.
+  expect_equal(
+    bbsrgeo_sheet_years("1999-00", meta),
+    list(from = 1999L, to = 2000L)
+  )
+  # The existing patterns are unchanged.
+  expect_equal(
+    bbsrgeo_sheet_years("1997-1998", meta),
+    list(from = 1997L, to = 1998L)
+  )
+  expect_equal(
+    bbsrgeo_sheet_years("2005", meta),
+    list(from = 2005L, to = 2006L)
+  )
+})
+
+test_that("bbsrgeo_sheet_years rejects a two-digit end year that is not the next year", {
+  meta <- list(kind = "annual", file_name = "ref-gemeinden-1990-2000.xlsx")
+  expect_error(bbsrgeo_sheet_years("1990-93", meta), "Unexpected sheet name")
+})

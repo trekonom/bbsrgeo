@@ -120,13 +120,24 @@ bbsrgeo_sheet_years <- function(sheet, meta) {
     if (length(m) == 3) {
       return(list(from = as.integer(m[2]), to = as.integer(m[3])))
     }
+    # The municipal 1990-2000 file abbreviates the end year in its sheet
+    # names ("1990-91" to "1996-97", checked with readxl::excel_sheets());
+    # "1999-00" would work too. The end year must be the year after the
+    # start year.
+    m_short <- regmatches(sheet, regexec("^(\\d{4})-(\\d{2})$", sheet))[[1]]
+    if (length(m_short) == 3) {
+      from <- as.integer(m_short[2])
+      if ((from + 1L) %% 100L == as.integer(m_short[3])) {
+        return(list(from = from, to = from + 1L))
+      }
+    }
     m2 <- regmatches(sheet, regexec("^(\\d{4})$", sheet))[[1]]
     if (length(m2) == 2) {
       year <- as.integer(m2[2])
       return(list(from = year, to = year + 1L))
     }
     rlang::abort(sprintf(
-      "Unexpected sheet name '%s' in an 'annual' file (%s) - expected 'YYYY-YYYY' or 'YYYY'.",
+      "Unexpected sheet name '%s' in an 'annual' file (%s) - expected 'YYYY-YYYY', 'YYYY-YY' or 'YYYY'.",
       sheet,
       meta$file_name
     ))
