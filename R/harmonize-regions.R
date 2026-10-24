@@ -209,6 +209,19 @@ harmonize_path <- function(group, crosswalk, crosswalk_forward, value_cols, type
     to <- if (forward) j + 1L else j
     step_crosswalk <- crosswalk[crosswalk$year_from == from & crosswalk$year_to == to, , drop = FALSE]
     if (nrow(step_crosswalk) == 0) {
+      fixed_target <- unique(crosswalk$year_to)
+      if (forward && length(fixed_target) == 1L &&
+            length(unique(crosswalk$year_from)) > 1L) {
+        # A "conversion_*" crosswalk converts straight to its fixed year and
+        # cannot be chained, so the real problem is the requested target_year.
+        rlang::abort(sprintf(
+          paste(
+            "The crosswalk converts directly to the boundary year %d, so",
+            "target_year must be %d (or \"current\"), not %d."
+          ),
+          fixed_target, fixed_target, target_year
+        ))
+      }
       rlang::abort(sprintf(
         paste(
           "No crosswalk found for the %d -> %d transition.",

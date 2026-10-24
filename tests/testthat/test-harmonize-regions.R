@@ -117,6 +117,22 @@ test_that("harmonize_regions aborts on a missing hop in the chain", {
   )
 })
 
+test_that("harmonize_regions names the fixed target year of a conversion crosswalk", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000009", 1999L, 2021L),
+    crosswalk_row("01000001", "01000009", 2005L, 2021L)
+  )
+  data <- tibble::tibble(ags = "01000001", year = 1999L, population = 100)
+
+  expect_error(
+    harmonize_regions(
+      data, crosswalk, "ags", "year", "population",
+      type = "absolute", weight = "population", target_year = 2015L, level = "districts"
+    ),
+    "target_year must be 2021"
+  )
+})
+
 test_that("harmonize_regions refuses backcasting without explicit permission", {
   crosswalk <- crosswalk_row("01000001", "01000099", 2020L, 2021L)
   data <- tibble::tibble(ags = "01000099", year = 2021L, population = 100)
