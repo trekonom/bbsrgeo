@@ -1,6 +1,6 @@
 # Absolute conversion turns missing inputs into 0
 
-Status: needs-triage
+Status: done
 Category: bug
 
 Found while grilling the domain model (GLOSSARY.md).

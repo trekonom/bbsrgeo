@@ -105,6 +105,12 @@ deviation is in the crosswalk, not in \code{data}. \code{type = "ratio"} is not
 affected (its weights are normalized anyway), and backcasting is left as
 is, since shares are not expected to sum to 1 per \code{ags_new}.
 
+Missing values stay missing: with \code{type = "absolute"}, a converted value is
+\code{NA} if any contributing old unit with a non-zero share is \code{NA}, since a
+partial sum would understate the total. With \code{type = "ratio"}, old units
+with a missing value are left out of the weighted mean, and the result is
+\code{NA} only if all of them are missing.
+
 If the crosswalk is of kind \code{"annual"} and \code{target_year} is more than one
 year-step away, the year-to-year crosswalks are chained automatically
 (provided the chain is unbroken). With a \code{"conversion_*"} crosswalk, the

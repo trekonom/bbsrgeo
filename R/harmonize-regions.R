@@ -28,6 +28,12 @@
 #' affected (its weights are normalized anyway), and backcasting is left as
 #' is, since shares are not expected to sum to 1 per `ags_new`.
 #'
+#' Missing values stay missing: with `type = "absolute"`, a converted value is
+#' `NA` if any contributing old unit with a non-zero share is `NA`, since a
+#' partial sum would understate the total. With `type = "ratio"`, old units
+#' with a missing value are left out of the weighted mean, and the result is
+#' `NA` only if all of them are missing.
+#'
 #' If the crosswalk is of kind `"annual"` and `target_year` is more than one
 #' year-step away, the year-to-year crosswalks are chained automatically
 #' (provided the chain is unbroken). With a `"conversion_*"` crosswalk, the
@@ -270,13 +276,13 @@ harmonize_step <- function(group, step_crosswalk, value_cols, type, weight, forw
   }
 
   if (type == "absolute") {
-    for (v in value_cols) {
-      joined[[v]] <- joined[[v]] * joined$..share
-    }
     result <- dplyr::group_by(joined, .data$..ags_target, .data$..year)
     result <- dplyr::summarise(
       result,
-      dplyr::across(dplyr::all_of(value_cols), ~ sum(.x, na.rm = TRUE)),
+      dplyr::across(
+        dplyr::all_of(value_cols),
+        ~ sum_absolute(.x, .data$..share)
+      ),
       .groups = "drop"
     )
   } else {
@@ -286,13 +292,32 @@ harmonize_step <- function(group, step_crosswalk, value_cols, type, weight, forw
       result,
       dplyr::across(
         dplyr::all_of(value_cols),
-        ~ stats::weighted.mean(.x, w = .data$..weight, na.rm = TRUE)
+        ~ weighted_mean_or_na(.x, .data$..weight)
       ),
       .groups = "drop"
     )
   }
 
   dplyr::rename(result, ..ags = "..ags_target")
+}
+
+# Sums value * share over the old units feeding one new unit. A missing value
+# makes the result missing (a partial sum would understate the true total),
+# unless its share is 0, in which case it contributes nothing anyway.
+sum_absolute <- function(x, share) {
+  if (any(is.na(x) & !(share %in% 0))) {
+    return(NA_real_)
+  }
+  sum(x * share, na.rm = TRUE)
+}
+
+# Weighted mean over the old units with a value; missing only when no unit has
+# one (stats::weighted.mean() would return NaN there).
+weighted_mean_or_na <- function(x, w) {
+  if (all(is.na(x))) {
+    return(NA_real_)
+  }
+  stats::weighted.mean(x, w = w, na.rm = TRUE)
 }
 
 # Renormalizes `share_col` per ags_old/year_from/year_to so that each group sums

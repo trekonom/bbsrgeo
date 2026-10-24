@@ -133,6 +133,44 @@ test_that("harmonize_regions names the fixed target year of a conversion crosswa
   )
 })
 
+test_that("harmonize_regions keeps missing inputs missing for absolute values", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000099", 2020L, 2021L),
+    crosswalk_row("01000002", "01000099", 2020L, 2021L),
+    crosswalk_row("01000003", "01000098", 2020L, 2021L),
+    crosswalk_row("01000004", "01000098", 2020L, 2021L)
+  )
+  data <- tibble::tibble(
+    ags = c("01000001", "01000002", "01000003", "01000004"), year = 2020L,
+    population = c(NA, NA, 10, NA)
+  )
+
+  res <- harmonize_regions(
+    data, crosswalk, "ags", "year", "population",
+    type = "absolute", weight = "population", target_year = 2021L, level = "districts"
+  )
+
+  expect_true(is.na(res$population[res$ags == "01000099"]))
+  expect_true(is.na(res$population[res$ags == "01000098"]))
+})
+
+test_that("harmonize_regions returns NA, not NaN, for an all-missing ratio", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000099", 2020L, 2021L),
+    crosswalk_row("01000002", "01000099", 2020L, 2021L)
+  )
+  data <- tibble::tibble(
+    ags = c("01000001", "01000002"), year = 2020L, rate = NA_real_
+  )
+
+  res <- harmonize_regions(
+    data, crosswalk, "ags", "year", "rate",
+    type = "ratio", weight = "population", target_year = 2021L, level = "districts"
+  )
+
+  expect_identical(res$rate, NA_real_)
+})
+
 test_that("harmonize_regions refuses backcasting without explicit permission", {
   crosswalk <- crosswalk_row("01000001", "01000099", 2020L, 2021L)
   data <- tibble::tibble(ags = "01000099", year = 2021L, population = 100)

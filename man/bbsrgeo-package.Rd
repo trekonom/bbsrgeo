@@ -8,6 +8,14 @@
 \description{
 Tools to download and read the area crosswalks ('Umstiegsschluessel') for municipalities and districts published by the BBSR (Bundesinstitut fuer Bau-, Stadt- und Raumforschung, Germany's Federal Institute for Research on Building, Urban Affairs and Spatial Development), and to convert German regional statistics time series from the Regionaldatenbank Deutschland (GENESIS-Regio) onto a consistent set of area boundaries. Includes two pairs of example datasets, each pairing a Regionaldatenbank Deutschland series ('popregio', 'ltcregio') with an independent INKAR reference series used to validate the conversion ('popinkar', 'ltcinkar'; INKAR is a BBSR data product distinct from the Regionaldatenbank Deutschland), all licensed under the 'Datenlizenz Deutschland - Namensnennung - Version 2.0' ('dl-de/by-2-0'); see ?popregio, ?popinkar, ?ltcregio, and ?ltcinkar for the required attribution.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/trekonom/bbsrgeo}
+  \item Report bugs at \url{https://github.com/trekonom/bbsrgeo/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Stefan Moog \email{stefan.moog@prognos.com}
 
