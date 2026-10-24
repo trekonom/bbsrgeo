@@ -3,6 +3,9 @@
 # the build/test run - only re-run manually if needed (requires the
 # Suggests package 'writexl').
 #
+# Rewrites every fixture, and writexl output is not byte-stable: after running
+# it, `git checkout` the fixtures you did not mean to change.
+#
 # Structure per sheet: row 1 = header placeholder (skipped by
 # bbsrgeo:::bbsrgeo_read_sheet() via skip = 1), from row 2 onward real
 # data, NO column names (col_names = FALSE when writing).
