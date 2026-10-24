@@ -1,6 +1,6 @@
 # Vignette ratio section contradicts itself and the test
 
-Status: ready-for-agent
+Status: done
 Category: bug
 
 Found in review of commit b0e071a (`vignettes/bbsrgeo.Rmd`, "A ratio example").

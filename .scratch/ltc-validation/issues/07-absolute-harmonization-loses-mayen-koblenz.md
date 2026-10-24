@@ -1,6 +1,6 @@
 # harmonize_regions(type = "absolute") collapses Mayen-Koblenz counts to ~0
 
-Status: done (uncommitted)
+Status: done
 Category: bug
 
 Found while re-running the ltc-validation check on harmonized output (issue 02 grilling). Not yet investigated beyond the observation below.
