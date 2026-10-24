@@ -239,16 +239,25 @@ harmonize_regions_impl <- function(
     )
   }
 
+  if (allow_backcast && any(base$..year > target_year_resolved)) {
+    rlang::warn(paste(
+      "Backcasting (disaggregation from a newer to an older boundary) is",
+      "experimental and carries a higher estimation error than the forward",
+      "conversion BBSR crosswalks are designed for."
+    ))
+  }
+
   groups <- split(base, base$..year)
   result <- purrr::map_dfr(groups, function(group) {
+    start_year <- group$..year[[1]]
     harmonize_path(
       group,
-      crosswalk,
-      crosswalk_forward,
+      # Only the forward shares are renormalized; a backcast uses them as given.
+      if (start_year > target_year_resolved) crosswalk else crosswalk_forward,
       value_cols,
       type,
       weight,
-      group$..year[[1]],
+      start_year,
       target_year_resolved,
       allow_backcast
     )
@@ -264,7 +273,6 @@ harmonize_regions_impl <- function(
 harmonize_path <- function(
   group,
   crosswalk,
-  crosswalk_forward,
   value_cols,
   type,
   weight,
@@ -277,20 +285,7 @@ harmonize_path <- function(
   }
 
   forward <- start_year < target_year
-  steps <- conversion_steps(
-    if (forward) crosswalk_forward else crosswalk,
-    start_year,
-    target_year,
-    allow_backcast
-  )
-
-  if (!forward) {
-    rlang::warn(paste(
-      "Backcasting (disaggregation from a newer to an older boundary) is",
-      "experimental and carries a higher estimation error than the forward",
-      "conversion BBSR crosswalks are designed for."
-    ))
-  }
+  steps <- conversion_steps(crosswalk, start_year, target_year, allow_backcast)
 
   current <- group
   for (step in steps) {

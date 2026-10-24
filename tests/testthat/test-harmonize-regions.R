@@ -373,6 +373,39 @@ test_that("harmonize_regions performs backcasting with a warning when explicitly
   expect_equal(res$ags, "01000001")
 })
 
+test_that("a backcast over several years warns once", {
+  crosswalk <- rbind(
+    crosswalk_row("01000001", "01000001", 2020L, 2021L),
+    crosswalk_row("01000001", "01000001", 2021L, 2022L)
+  )
+  data <- tibble::tibble(
+    ags = "01000001",
+    year = c(2021L, 2022L),
+    population = 100
+  )
+
+  warnings <- character()
+  withCallingHandlers(
+    harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      type = "absolute",
+      weight = "population",
+      target_year = 2020L,
+      level = "districts",
+      allow_backcast = TRUE
+    ),
+    warning = function(w) {
+      warnings <<- c(warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_length(grep("experimental", warnings), 1)
+})
+
 test_that("target_year = 'current' uses the most recent available boundary", {
   crosswalk <- crosswalk_row("01000001", "01000009", 2020L, 2021L)
   data <- tibble::tibble(ags = "01000001", year = 2020L, population = 100)
