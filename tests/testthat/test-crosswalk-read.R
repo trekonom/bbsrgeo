@@ -392,8 +392,13 @@ test_that("the real files: only the unfixed district row has inconsistent names"
         invokeRestart("muffleWarning")
       }
     )
-    out[grepl("name", out)]
+    out[grepl("names of one code differ", out)]
   }
-  expect_match(name_warnings(fix = FALSE), "07235000.*2011 -> 2012")
+  # Exactly one group, and only on the ags_old side. The municipal files are
+  # covered by the loop in the "no header rows" test, which expects no warning
+  # besides the share deviations.
+  unfixed <- name_warnings(fix = FALSE)
+  expect_match(unfixed, "1 ags_old group.*07235000.*2011 -> 2012")
+  expect_false(grepl("ags_new group", unfixed))
   expect_length(name_warnings(), 0)
 })
