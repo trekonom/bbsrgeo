@@ -199,3 +199,58 @@ test_that("share_deviation_patterns names a, b and c", {
   )
   expect_equal(patterns$share_sum[1], 2)
 })
+
+# Constructed rows for report_treatments(): "a" (2000 -> 2001) sums to 0.5 and
+# is renormalized, "b" (2005 -> 2006) sums to 0.995 and is rounding, "c"
+# (2000 -> 2001) sums to 1.
+treatment_crosswalk <- function() {
+  deviation_crosswalk(
+    ags_old = c("a", "b", "c"),
+    year_from = c(2000, 2005, 2000),
+    year_to = c(2001, 2006, 2001),
+    share_area = c(0.5, 0.995, 1),
+    area_old = c(1, 1, 1)
+  )
+}
+
+test_that("report_treatments warns for renormalized groups only in rows", {
+  cw <- treatment_crosswalk()
+  classified <- classify_share_deviations(cw, "area")
+  expect_warning(
+    suppressMessages(
+      report_treatments(cw, "share_area", classified, rep(TRUE, 3))
+    ),
+    "do not sum to 1.*renormalized"
+  )
+  expect_no_warning(
+    suppressMessages(
+      report_treatments(cw, "share_area", classified, cw$year_from >= 2005)
+    )
+  )
+})
+
+test_that("report_treatments reports rounding as a message", {
+  cw <- treatment_crosswalk()
+  classified <- classify_share_deviations(cw, "area")
+  expect_message(
+    suppressWarnings(
+      report_treatments(cw, "share_area", classified, rep(TRUE, 3))
+    ),
+    "deviate slightly from 1"
+  )
+})
+
+test_that("report_treatments with renormalize = FALSE only messages", {
+  cw <- treatment_crosswalk()
+  classified <- classify_share_deviations(cw, "area")
+  expect_message(
+    report_treatments(
+      cw,
+      "share_area",
+      classified,
+      rep(TRUE, 3),
+      renormalize = FALSE
+    ),
+    "used as given"
+  )
+})

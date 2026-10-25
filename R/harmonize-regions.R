@@ -355,33 +355,10 @@ renormalize_forward_shares <- function(
     return(crosswalk)
   }
   in_window <- crosswalk$year_from >= from_year & crosswalk$year_to <= to_year
-  sums <- classified$share_sum
+  report_treatments(crosswalk, share_col, classified, in_window, renormalize)
   if (!renormalize) {
-    report_share_deviations(
-      crosswalk,
-      share_col,
-      off & in_window,
-      sums,
-      "were used as given (renormalize = FALSE)"
-    )
     return(crosswalk)
   }
-  report_share_deviations(
-    crosswalk,
-    share_col,
-    classified$treatment == "renormalize" & in_window,
-    sums,
-    "do not sum to 1 (tolerance %s). They were renormalized so that no part of an absolute value is lost. The inconsistency is in the BBSR crosswalk, not in `data`",
-    severity = "warning"
-  )
-  report_share_deviations(
-    crosswalk,
-    share_col,
-    classified$treatment == "rounding" & in_window,
-    sums,
-    "deviate slightly from 1 (within the tolerance %s) and were renormalized to sum to 1",
-    severity = "message"
-  )
   crosswalk[[share_col]] <- classified$share
   crosswalk
 }
