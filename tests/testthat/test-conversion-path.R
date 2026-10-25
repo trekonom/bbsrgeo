@@ -178,6 +178,16 @@ test_that("a districts crosswalk reads a 5-digit Kreisschluessel as key + 000", 
   expect_equal(plan$ags, c("07137000", "07137000", "01001000", "07137000"))
 })
 
+test_that("a districts crosswalk leaves a value that is not digits to normalize_ags", {
+  crosswalk <- transition_rows(2020)
+  crosswalk$level <- "districts"
+  garbage <- c("-5", "1.5")
+  expect_equal(
+    plan_conversion(garbage, 2020L, crosswalk, 2021L)$ags,
+    normalize_ags(garbage)
+  )
+})
+
 test_that("without the districts level a short AGS is only zero-padded", {
   crosswalk <- transition_rows(2020)
   expect_equal(

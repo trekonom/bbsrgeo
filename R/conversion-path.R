@@ -49,9 +49,11 @@ normalize_data_ags <- function(ags, crosswalk) {
   if (!identical(as.character(levels), "districts")) {
     return(out)
   }
-  num <- suppressWarnings(as.numeric(trimws(as.character(ags))))
-  key <- !is.na(num) & num < 1e5
-  out[key] <- paste0(sprintf("%05.0f", num[key]), "000")
+  # Digits only: a value like "-5" or "1.5" is not a key and is left to
+  # normalize_ags().
+  text <- trimws(as.character(ags))
+  key <- grepl("^[0-9]{1,5}$", text)
+  out[key] <- paste0(sprintf("%05d", as.integer(text[key])), "000")
   out
 }
 
