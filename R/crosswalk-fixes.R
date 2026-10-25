@@ -8,6 +8,11 @@
 # every matched row; "drop" removes every matched row (`column` and `value` are
 # NA). A fix is listed only with a verified correct value; `evidence` records
 # what was observed, and in which download.
+#
+# After adding a fix, run the full suite: test-validate-ltc.R and
+# test-validate-inkar.R name the districts they exclude, and a fix can change
+# which ones still show as anomalies. Then re-render the README
+# (dev/render-readme.R), since it prints the fix messages.
 crosswalk_fixes <- tibble::tibble(
   id = c(
     "district-miscoded-bernkastel-wittlich-2011",
