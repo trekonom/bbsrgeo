@@ -114,9 +114,11 @@ test_that("check_regions reports exactly the rows harmonize_regions drops", {
     population = 1
   )
 
+  # check_regions() reports the unmapped rows as a message.
   reported <- suppressMessages(
     check_regions(data, crosswalk, "ags", "year", 2022L)
   )
+  # harmonize_regions() warns about the same unmapped rows.
   converted <- suppressWarnings(
     harmonize_regions(
       data,
@@ -166,6 +168,7 @@ test_that("the plan lists exactly the units whose value harmonize_regions loses"
   loses_value <- vapply(
     seq_len(nrow(data)),
     function(i) {
+      # The warning that this row has no matching crosswalk entry.
       converted <- suppressWarnings(
         harmonize_regions(
           data[i, ],

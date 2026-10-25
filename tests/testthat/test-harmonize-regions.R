@@ -525,6 +525,7 @@ test_that("the single-row share fix leaves the converted values unchanged and en
     "Cochem-Zell",
     "Mayen-Koblenz"
   )
+  # The "Documented fixes" message listing the applied fixes.
   fixed <- suppressMessages(apply_crosswalk_fixes(published, fixes))
   expect_equal(fixed$share_population, rep(1, 4))
 
@@ -546,6 +547,7 @@ test_that("the single-row share fix leaves the converted values unchanged and en
     )
   }
   expect_no_message(expect_no_warning(res_fixed <- convert(fixed)))
+  # The share-sum warning on the unfixed crosswalk, and its messages.
   res_published <- suppressWarnings(suppressMessages(convert(published)))
   expect_equal(res_fixed, res_published)
   expect_equal(res_fixed$population, c(1000, 500))
@@ -558,6 +560,7 @@ test_that("absolute conversion distributes the full count proportionally when sp
   )
   data <- tibble::tibble(ags = "01000001", year = 2020L, population = 900)
 
+  # The warning that the split shares do not sum to 1.
   res <- suppressWarnings(harmonize_regions(
     data,
     crosswalk,

@@ -100,6 +100,7 @@ test_that("a 'set' fix with n_rows = 2 writes to both matched rows", {
       n_rows = 2L
     )
   )
+  # The "Documented fixes" message listing the applied fixes.
   res <- suppressMessages(apply_crosswalk_fixes(small_crosswalk(), fixes))
   expect_equal(res$share_area, c(0.5, 0.5, 0.9, 0.5, 0.5))
 })
@@ -304,6 +305,7 @@ test_that("the miscoded district row is corrected in the real file", {
 })
 
 test_that("harmonize_regions() passes 0.86 % of 07231000 on to 07235000 after the fix", {
+  # The "Documented fixes" message listing the applied fixes.
   d <- bbsr_crosswalk_fix(fix_rows()) |> suppressMessages()
   data <- tibble::tibble(
     ags = c("07231000", "07235000"),
@@ -332,6 +334,7 @@ test_that("harmonize_regions() passes 0.86 % of 07231000 on to 07235000 after th
     type = "absolute",
     target_year = 2012L
   ) |>
+    # The message that the deviating shares were renormalized.
     suppressMessages()
   expect_equal(unfixed$population[unfixed$ags == "07231000"], 10000)
 })

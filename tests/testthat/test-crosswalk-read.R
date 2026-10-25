@@ -259,6 +259,7 @@ test_that("the real files: only the unfixed district row has inconsistent names"
   name_warnings <- function(...) {
     out <- character()
     withCallingHandlers(
+      # The fix, ignored-year and share-count messages; only warnings are read.
       suppressMessages(bbsr_crosswalk_read(path, ...)),
       warning = function(w) {
         out <<- c(out, conditionMessage(w))
@@ -286,6 +287,7 @@ test_that("the real files: the unfixed district row disagrees with its counts", 
   count_messages <- function(...) {
     out <- character()
     withCallingHandlers(
+      # The share-sum and differing-names warnings; only messages are read.
       suppressWarnings(bbsr_crosswalk_read(path, ...)),
       message = function(m) {
         out <<- c(out, conditionMessage(m))

@@ -153,6 +153,7 @@ bbsrgeo_sheet_years <- function(sheet, meta) {
 }
 
 bbsrgeo_read_sheet <- function(path, sheet, meta) {
+  # readxl's "New names:" message for the unnamed columns of a header-less read.
   raw <- suppressMessages(
     readxl::read_excel(
       path,

@@ -29,6 +29,7 @@ normalize_ags <- function(x) {
   x <- trimws(as.character(x))
   x[!nzchar(x)] <- NA_character_
 
+  # "NAs introduced by coercion"; the unparsable values are reported below.
   ags_num <- suppressWarnings(as.numeric(x))
   invalid <- is.na(ags_num) & !is.na(x)
   if (any(invalid)) {
