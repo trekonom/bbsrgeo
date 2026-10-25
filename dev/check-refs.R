@@ -86,7 +86,17 @@ if ("--diff" %in% args) {
     lines <- readLines(doc, warn = FALSE)
     for (name in changed) {
       at <- grep(sprintf("`%s()`", name), lines, fixed = TRUE)
-      hits <- c(hits, sprintf("%s:%d: %s", doc, at, trimws(lines[at])))
+      # The start of the line is enough to find it; a glossary entry is a paragraph.
+      hits <- c(
+        hits,
+        sprintf(
+          "%s:%d: %s() - %s",
+          doc,
+          at,
+          name,
+          strtrim(trimws(lines[at]), 70)
+        )
+      )
     }
   }
   if (length(hits) == 0) {
