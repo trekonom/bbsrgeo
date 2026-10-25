@@ -255,6 +255,9 @@ test_that("the miscoded district row is corrected in the real file", {
   }
   as_published <- read_collecting(fix = FALSE)$value
   read <- read_collecting()
+  # The 2025 rows of the current file are ignored (crosswalk_last_year).
+  expect_match(read$messages, "Ignored 400 row(s)", fixed = TRUE, all = FALSE)
+  read$messages <- grep("Documented fixes", read$messages, value = TRUE)
   # One line per fix id, both in the one message.
   expect_length(read$messages, 1)
   expect_match(

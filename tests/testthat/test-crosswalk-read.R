@@ -171,11 +171,14 @@ test_that("the real BBSR files have no header rows among their data rows", {
   # the fix the municipal files had 10, 10 and 6 more rows (the label row of
   # each sheet with a second header row); the 2020-2024 and district files
   # are unchanged. A changed upstream file will need these updated.
+  # Exact counts on purpose: a mismatch usually means BBSR republished the file
+  # under the same name (districts gained the 2024 -> 2025 transition), not a
+  # header-row bug.
   expected_rows <- c(
     municipalities_1990 = 151093,
     municipalities_2000 = 127337,
     municipalities_2010 = 112275,
-    municipalities_2020 = 54949,
+    municipalities_2020 = 43991,
     districts = 14908
   )
   files <- list(
@@ -296,4 +299,15 @@ test_that("the real files: the unfixed district row disagrees with its counts", 
   expect_match(unfixed, "area: 1 group.*07235000.*year_from = 2011")
   expect_match(unfixed, "population: 1 group.*07235000.*year_from = 2011")
   expect_length(count_messages(), 0)
+})
+
+test_that("transitions to a year after the last supported one are dropped, with a message", {
+  d <- tibble::tibble(
+    ags_old = c("01001000", "01001000"),
+    year_from = c(2023L, 2024L),
+    year_to = c(2024L, 2025L)
+  )
+  expect_message(res <- drop_newer_transitions(d), "Ignored 1 row")
+  expect_equal(res$year_to, 2024L)
+  expect_no_message(drop_newer_transitions(d[1, ]))
 })

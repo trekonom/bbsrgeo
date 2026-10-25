@@ -37,4 +37,7 @@ from the file name). \code{level} and \code{kind} are derived from the file name
 names are set by the BBSR and remain in German). In case of boundary
 reforms (municipality mergers, district reorganizations), there are
 multiple rows per \code{ags_old}, whose shares sum to 1.
+
+Transitions to a year after 2024 are ignored, with a message: bbsrgeo
+supports boundaries up to the last year of its example datasets.
 }

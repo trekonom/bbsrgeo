@@ -13,6 +13,9 @@
 #' reforms (municipality mergers, district reorganizations), there are
 #' multiple rows per `ags_old`, whose shares sum to 1.
 #'
+#' Transitions to a year after 2024 are ignored, with a message: bbsrgeo
+#' supports boundaries up to the last year of its example datasets.
+#'
 #' @param path Path or vector of paths to local xlsx files (see
 #'   [bbsr_crosswalk_download()]).
 #' @param fix Apply the documented corrections of [bbsr_crosswalk_fix()].
@@ -30,12 +33,35 @@
 bbsr_crosswalk_read <- function(path, fix = TRUE) {
   stopifnot(is.logical(fix), length(fix) == 1, !is.na(fix))
   data <- purrr::map_dfr(path, bbsrgeo_read_file)
+  data <- drop_newer_transitions(data)
   if (fix) {
     data <- bbsr_crosswalk_fix(data)
   }
   report_finding(bbsrgeo_check_names(data))
   report_finding(bbsrgeo_check_share_sums(data))
   report_finding(bbsrgeo_check_count_shares(data))
+  data
+}
+
+# The last boundary year the package supports: the example datasets end in
+# 2024, and BBSR republished its files with a 2024 -> 2025 transition under
+# unchanged file names. Raise it together with the URL table in R/sysdata.rda
+# and the row counts in test-crosswalk-read.R.
+crosswalk_last_year <- 2024L
+
+drop_newer_transitions <- function(data) {
+  newer <- data$year_to > crosswalk_last_year
+  if (any(newer)) {
+    rlang::inform(sprintf(
+      paste(
+        "Ignored %d row(s) of transitions to a year after %d,",
+        "the last boundary year bbsrgeo supports."
+      ),
+      sum(newer),
+      crosswalk_last_year
+    ))
+    data <- data[!newer, ]
+  }
   data
 }
 
