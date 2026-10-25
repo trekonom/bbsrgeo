@@ -81,6 +81,7 @@ using the real BBSR crosswalk:
 ``` r
 path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
 crosswalk <- bbsr_crosswalk_read(path)
+#> Ignored 400 row(s) of transitions to a year after 2024, the last boundary year bbsrgeo supports.
 #> Documented fixes to the BBSR crosswalk:
 #> • Applied: district-miscoded-bernkastel-wittlich-2011 (2011 -> 2012), 1 row(s) changed. Evidence: ?bbsr_crosswalk_fix.
 #> • Applied: district-single-row-shares-2014-2015 (2014 -> 2015, 2015 -> 2016), 4 row(s) changed. Evidence: ?bbsr_crosswalk_fix.
