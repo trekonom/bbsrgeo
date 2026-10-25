@@ -18,22 +18,25 @@ Corrects rows of a crosswalk read with \code{\link[=bbsr_crosswalk_read]{bbsr_cr
 BBSR file is known to be wrong and the correct value is verified. The
 corrections change the data; \code{bbsr_crosswalk_read()} applies them by
 default (\code{fix = TRUE}). Each fix is listed with its evidence in
-\code{R/crosswalk-fixes.R} (the \code{crosswalk_fixes} table).
+\code{R/crosswalk-fixes.R} (the \code{crosswalk_fixes} table, one row per cell set or
+row dropped, rows of one documented bug sharing an \code{id}).
 }
 \details{
 Current fixes:
 \itemize{
-\item District file, 2011 -> 2012: a row with \code{name_old} Bernkastel-Wittlich is
-coded \code{ags_old} 07235000 (Trier-Saarburg); it belongs to 07231000. Evidence:
-with the recode, the area and population shares of both 07231000 and
-07235000 sum to 1 (before: 0.991 and 1.009), and the row's \code{area_old} of
-10.1 km2 equals the area 07231000 loses between 2010 -> 2011 and 2011 ->
-2012 (1178 to 1168).
+\item \code{district-miscoded-bernkastel-wittlich-2011}: district file, 2011 -> 2012,
+a row of Bernkastel-Wittlich coded \code{ags_old} 07235000 is recoded to
+07231000.
+\item \code{district-single-row-shares-2014-2015}: district file, 2014 -> 2015 and
+2015 -> 2016, the single self-mapping row of Cochem-Zell (07135000) and
+Mayen-Koblenz (07137000) gets all three shares set to 1.
 }
 
-A fix applies only when exactly one row matches its transition, codes and
-name. If the crosswalk contains the fix's transition and codes but no single
-matching row (e.g. BBSR corrected the file), the fix is not applied and the
-message says so. A crosswalk without them (e.g. a municipal file) is left
-alone, silently.
+A fix has two kinds of action: "set" writes a value to a column of every
+matched row, "drop" removes every matched row. A fix applies as a whole or
+not at all: only if every one of its table rows matches exactly the number of
+rows it expects. If the crosswalk contains a transition and codes of the fix
+but the rows do not match (e.g. BBSR corrected the file), nothing of the fix
+is applied and the message says so. A crosswalk without them (e.g. a
+municipal file) is left alone, silently.
 }

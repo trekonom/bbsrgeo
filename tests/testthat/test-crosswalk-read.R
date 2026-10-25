@@ -231,11 +231,11 @@ test_that("the real BBSR files have no header rows among their data rows", {
     expect_false(any(grepl("ags_old = 'NA'", warnings)), label = name)
 
     # Share deviations measured on the same downloads: the 1990-2000 file has
-    # 4 groups with a share of 1 on every row, the district file 4 single-row
-    # groups below 1; 09377444 (2016, sum 0.99) is rounding and does not warn.
+    # 4 groups with a share of 1 on every row; 09377444 (2016, sum 0.99) is
+    # rounding and does not warn. The district file's 4 single-row groups below
+    # 1 are fixed (district-single-row-shares-2014-2015).
     expected_pattern <- c(
-      municipalities_1990 = "4 combination.*share of 1 on every target row",
-      districts = "4 combination.*single target row"
+      municipalities_1990 = "4 combination.*share of 1 on every target row"
     )[name]
     if (is.na(expected_pattern)) {
       expect_length(warnings, 0)

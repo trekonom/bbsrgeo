@@ -1,6 +1,6 @@
 # Make the source-data fix table general and add the 2014/2015 district single-row shares
 
-Status: ready-for-agent
+Status: done
 Category: enhancement
 
 Raised by the maintainer: more **Source-data fixes** (see `GLOSSARY.md`) are to

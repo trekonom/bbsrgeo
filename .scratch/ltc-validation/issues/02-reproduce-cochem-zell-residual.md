@@ -52,3 +52,12 @@ Required changes:
 3. Ask BBSR how indicator 280 is built (follow-up, not blocking).
 
 Observed, not part of this issue: ratio vs counts-then-divide differ by ~0.4% for Goettingen (03159) 2009/2011 and Vorpommern-Greifswald (13075) 2009 (relevant to issue 03); Mayen-Koblenz absolute counts collapse under `type = "absolute"` (issue 07).
+
+> *Added while implementing crosswalk-source-fixes issue 03 (2026-10-25).*
+> The new `district-single-row-shares-2014-2015` fix sets the shares of the
+> Cochem-Zell (07135000) and Mayen-Koblenz (07137000) self-mapping rows to 1.
+> Harmonizing `popregio$population_total` (`type = "absolute"`,
+> `target_year = "current"`) with and without the fix gives identical values
+> for 07135000, 07137000 and 07140000 (2009, 2013, 2015), because
+> `harmonize_regions()` already renormalized these groups. The residual does
+> not change.

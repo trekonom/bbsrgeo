@@ -23,7 +23,7 @@ ltc_harmonized_vs_inkar <- function() {
       )
     }
   )
-  # Warns about the known share-sum anomalies handled below. A read error is
+  # Warns about share-sum deviations, messages about the documented fixes. A read error is
   # a real regression and must fail, not skip.
   crosswalk <- suppressWarnings(bbsr_crosswalk_read(path))
 
@@ -53,25 +53,15 @@ ltc_harmonized_vs_inkar <- function() {
   compared$rel_diff <- abs(compared$care_rate_ours - compared$care_rate_inkar) /
     compared$care_rate_inkar
 
-  # Same known BBSR-source data-quality issue as test-validate-inkar.R (a
-  # handful of transitions where share_population sums to far less than 1
-  # for a self-mapping district): here it's AGS 07135000 "Cochem-Zell" and
-  # 07137000 "Mayen-Koblenz" 2014->2015 and 2015->2016 (share_population
-  # 0.983/0.017 instead of 1.0/0.0). Districts whose conversion chain
-  # passes through such a transition are excluded from the comparison, per
-  # check year: only transitions with year_from >= check_year and
-  # year_to <= target year lie on that year's conversion path.
-  share_sums <- stats::aggregate(
-    share_population ~ ags_old + year_from + year_to,
-    crosswalk,
-    sum,
-    na.rm = TRUE
-  )
-  bad <- share_sums[abs(share_sums$share_population - 1) > 0.01, ]
-  target_year <- max(crosswalk$year_to)
+  # Cochem-Zell (07135) and Mayen-Koblenz (07137) are excluded for check years
+  # whose conversion chain passes through their 2014->2015 and 2015->2016
+  # transitions (year_from >= check_year). These rows used to be selected by
+  # their share sums of 0.983/0.017; the read now fixes them to 1
+  # (district-single-row-shares-2014-2015), which does not change the converted
+  # values, so the exclusion is named. Their rates disagree with INKAR by up to
+  # 2% in 2009-2013 (see ltc-validation issue 02, unexplained).
   affected <- lapply(ltc_check_years, function(check_year) {
-    on_path <- bad$year_from >= check_year & bad$year_to <= target_year
-    unique(substr(bad$ags_old[on_path], 1, 5))
+    if (check_year <= ltc_excluded_until) ltc_excluded_ags else character()
   })
   names(affected) <- ltc_check_years
 
@@ -81,6 +71,9 @@ ltc_harmonized_vs_inkar <- function() {
     affected = affected
   )
 }
+
+ltc_excluded_ags <- c("07135", "07137")
+ltc_excluded_until <- 2015L
 
 # AGS 07140 Rhein-Hunsrueck-Kreis: harmonized population agrees with
 # popinkar within 0.2%, yet the rate is ~1.3% above INKAR's for 2009-2013.

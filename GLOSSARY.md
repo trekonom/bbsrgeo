@@ -67,7 +67,7 @@ The correction applied to the shares of one transition group in a share deviatio
 _Avoid_: fix, correction method
 
 **Source-data fix**:
-A documented correction to one row of a BBSR crosswalk file, made when the file is read and only where the correct value is verified. Listed with the evidence for it. Differs from a **Treatment**, which rescales shares during conversion from the shares alone and changes no row of the crosswalk.
+A documented correction to rows of a BBSR crosswalk file (set a cell, or drop a row), made when the file is read and only where the correct value is verified. A fix applies as a whole or not at all. Listed with the evidence for it. Differs from a **Treatment**, which rescales shares during conversion from the shares alone and changes no row of the crosswalk.
 _Avoid_: correction, patch, recode (a recode is one kind of fix)
 
 **Count gap**:

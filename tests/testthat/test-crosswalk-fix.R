@@ -19,7 +19,10 @@ fix_rows <- function() {
 
 test_that("a fix recodes its one matching row, leaves the rest, and says so", {
   d <- fix_rows()
-  expect_message(res <- bbsr_crosswalk_fix(d), "07235000.*07231000.*2011")
+  expect_message(
+    res <- bbsr_crosswalk_fix(d),
+    "Applied: district-miscoded-bernkastel-wittlich.*2011 -> 2012"
+  )
   expect_equal(res$ags_old, c("07231000", "07231000", "07235000"))
   expect_equal(res[names(res) != "ags_old"], d[names(d) != "ags_old"])
 })
@@ -47,6 +50,158 @@ test_that("a crosswalk without the transition is untouched and silent", {
   expect_equal(res, d)
 })
 
+# A constructed fix table: one row per column set or row dropped.
+fix_table <- function(...) {
+  rows <- list(...)
+  tibble::tibble(
+    id = vapply(rows, function(r) r$id, ""),
+    action = vapply(rows, function(r) r$action %||% "set", ""),
+    year_from = 2000L,
+    year_to = 2001L,
+    ags_old = vapply(rows, function(r) r$ags_old, ""),
+    name_old = vapply(rows, function(r) r$name_old %||% "A", ""),
+    ags_new = vapply(rows, function(r) r$ags_new %||% r$ags_old, ""),
+    column = vapply(rows, function(r) r$column %||% NA_character_, ""),
+    value = vapply(rows, function(r) r$value %||% NA_character_, ""),
+    n_rows = vapply(rows, function(r) r$n_rows %||% 1L, 1L),
+    evidence = "constructed"
+  )
+}
+
+small_crosswalk <- function() {
+  tibble::tibble(
+    ags_old = c("01", "01", "02", "03", "03"),
+    name_old = "A",
+    ags_new = c("01", "01", "02", "03", "03"),
+    year_from = 2000L,
+    year_to = 2001L,
+    share_area = c(0.5, 0.5, 0.9, 0.2, 0.2)
+  )
+}
+
+test_that("a 'set' fix writes a value of the column's type to its matched row", {
+  fixes <- fix_table(
+    list(id = "f", ags_old = "02", column = "share_area", value = "1")
+  )
+  expect_message(
+    res <- apply_crosswalk_fixes(small_crosswalk(), fixes),
+    "f.*2000 -> 2001.*1 row"
+  )
+  expect_equal(res$share_area, c(0.5, 0.5, 1, 0.2, 0.2))
+})
+
+test_that("a 'set' fix with n_rows = 2 writes to both matched rows", {
+  fixes <- fix_table(
+    list(
+      id = "f",
+      ags_old = "03",
+      column = "share_area",
+      value = "0.5",
+      n_rows = 2L
+    )
+  )
+  res <- suppressMessages(apply_crosswalk_fixes(small_crosswalk(), fixes))
+  expect_equal(res$share_area, c(0.5, 0.5, 0.9, 0.5, 0.5))
+})
+
+test_that("a 'drop' fix removes exactly the matched rows", {
+  fixes <- fix_table(list(id = "f", action = "drop", ags_old = "02"))
+  expect_message(
+    res <- apply_crosswalk_fixes(small_crosswalk(), fixes),
+    "f.*1 row"
+  )
+  expect_equal(res$ags_old, c("01", "01", "03", "03"))
+  expect_equal(res$share_area, c(0.5, 0.5, 0.2, 0.2))
+})
+
+test_that("an id with several table rows applies all of them in one message", {
+  fixes <- fix_table(
+    list(id = "f", ags_old = "02", column = "share_area", value = "1"),
+    list(
+      id = "f",
+      ags_old = "03",
+      column = "share_area",
+      value = "1",
+      n_rows = 2L
+    )
+  )
+  msgs <- character()
+  res <- withCallingHandlers(
+    apply_crosswalk_fixes(small_crosswalk(), fixes),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_equal(res$share_area, c(0.5, 0.5, 1, 1, 1))
+  expect_length(msgs, 1)
+  expect_match(msgs, "f.*3 row")
+})
+
+test_that("an id with a row matching too few or too many rows is not applied at all", {
+  for (bad in list(
+    list(id = "f", ags_old = "03", column = "share_area", value = "1"),
+    list(
+      id = "f",
+      ags_old = "01",
+      column = "share_area",
+      value = "1",
+      n_rows = 3L
+    )
+  )) {
+    fixes <- fix_table(
+      list(id = "f", ags_old = "02", column = "share_area", value = "1"),
+      bad
+    )
+    expect_message(
+      res <- apply_crosswalk_fixes(small_crosswalk(), fixes),
+      "not applied.*f.*matched 2 row"
+    )
+    expect_equal(res, small_crosswalk())
+  }
+  fixes <- fix_table(
+    list(id = "f", ags_old = "02", column = "share_area", value = "1"),
+    list(
+      id = "f",
+      ags_old = "01",
+      name_old = "B",
+      column = "share_area",
+      value = "1"
+    )
+  )
+  expect_message(
+    res <- apply_crosswalk_fixes(small_crosswalk(), fixes),
+    "not applied.*f.*matched 0 row"
+  )
+  expect_equal(res, small_crosswalk())
+})
+
+test_that("an id whose transition is absent is silent; each id gets one line", {
+  fixes <- fix_table(
+    list(id = "f", ags_old = "02", column = "share_area", value = "1"),
+    list(
+      id = "g",
+      ags_old = "03",
+      column = "share_area",
+      value = "0.5",
+      n_rows = 2L
+    )
+  )
+  fixes$year_from[2] <- 1990L
+  fixes$year_to[2] <- 1991L
+  msgs <- character()
+  res <- withCallingHandlers(
+    apply_crosswalk_fixes(small_crosswalk(), fixes),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_equal(res$share_area, c(0.5, 0.5, 1, 0.2, 0.2))
+  expect_match(msgs, "Applied: f ", fixed = TRUE)
+  expect_no_match(msgs, "g (", fixed = TRUE)
+})
+
 test_that("bbsr_crosswalk_read() applies fixes unless fix = FALSE", {
   path <- test_path("fixtures", "ref-kreise-testfixture-jaehrlich.xlsx")
   # The fixture has no documented row, so the read is unchanged and silent.
@@ -62,8 +217,6 @@ test_that("the miscoded district row is corrected in the real file", {
     error = function(e) skip("Could not download the BBSR area crosswalk.")
   )
 
-  # The 2014 and 2015 district rows still warn (not fixed); only the corrected
-  # groups must not.
   read_collecting <- function(...) {
     warnings <- character()
     messages <- character()
@@ -82,10 +235,36 @@ test_that("the miscoded district row is corrected in the real file", {
   }
   as_published <- read_collecting(fix = FALSE)$value
   read <- read_collecting()
+  # One line per fix id, both in the one message.
   expect_length(read$messages, 1)
-  expect_match(read$messages, "07231000", fixed = TRUE)
+  expect_match(
+    read$messages,
+    "district-miscoded-bernkastel-wittlich-2011",
+    fixed = TRUE
+  )
+  expect_match(
+    read$messages,
+    "district-single-row-shares-2014-2015",
+    fixed = TRUE
+  )
   fixed <- read$value
-  expect_false(any(grepl("07231000|07235000", read$warnings)))
+  expect_length(read$warnings, 0)
+
+  # The single self-mapping rows of Cochem-Zell and Mayen-Koblenz: shares of 1
+  # as fixed, the 2013 split as published.
+  single <- function(d) {
+    d[
+      d$ags_old %in%
+        c("07135000", "07137000") &
+        d$year_from %in% c(2014, 2015),
+    ]
+  }
+  share_cols <- c("share_area", "share_population", "share_employment")
+  expect_equal(nrow(single(fixed)), 4)
+  for (col in share_cols) {
+    expect_equal(single(fixed)[[col]], rep(1, 4), label = col)
+  }
+  expect_true(all(single(as_published)$share_area < 1))
 
   # Measured after the fix: all four sums are 1.000000 (to 6 digits); the
   # unfixed sums are 0.991 and 1.009, so 1e-3 separates the two.

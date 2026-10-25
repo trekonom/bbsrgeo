@@ -495,6 +495,61 @@ test_that("absolute conversion renormalizes off-1 shares of a self-mapping AGS a
   expect_equal(res$population, 1000)
 })
 
+test_that("the single-row share fix leaves the converted values unchanged and ends the renormalization", {
+  fixes <- crosswalk_fixes[
+    crosswalk_fixes$id == "district-single-row-shares-2014-2015",
+  ]
+  # All four self-mapping rows, as published (the fix applies as a whole).
+  published <- dplyr::bind_rows(lapply(
+    list(
+      c("07135000", 2014, 0.96166294, 0.98284864, 0.996122263),
+      c("07137000", 2014, 0.03833706, 0.01715136, 0.003877737),
+      c("07135000", 2015, 0.96166294, 0.98284864, 0.996122263),
+      c("07137000", 2015, 0.03833706, 0.01715136, 0.003877737)
+    ),
+    function(r) {
+      crosswalk_row(
+        r[[1]],
+        r[[1]],
+        as.integer(r[[2]]),
+        as.integer(r[[2]]) + 1L,
+        share_area = as.numeric(r[[3]]),
+        share_population = as.numeric(r[[4]]),
+        share_employment = as.numeric(r[[5]])
+      )
+    }
+  ))
+  published$name_old <- published$name_new <- ifelse(
+    published$ags_old == "07135000",
+    "Cochem-Zell",
+    "Mayen-Koblenz"
+  )
+  fixed <- suppressMessages(apply_crosswalk_fixes(published, fixes))
+  expect_equal(fixed$share_population, rep(1, 4))
+
+  data <- tibble::tibble(
+    ags = c("07135000", "07137000"),
+    year = 2014L,
+    population = c(1000, 500)
+  )
+  convert <- function(crosswalk) {
+    harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      type = "absolute",
+      weight = "population",
+      target_year = 2015L
+    )
+  }
+  expect_no_message(expect_no_warning(res_fixed <- convert(fixed)))
+  res_published <- suppressWarnings(suppressMessages(convert(published)))
+  expect_equal(res_fixed, res_published)
+  expect_equal(res_fixed$population, c(1000, 500))
+})
+
 test_that("absolute conversion distributes the full count proportionally when split shares sum to 0.9", {
   crosswalk <- dplyr::bind_rows(
     crosswalk_row("01000001", "01000002", 2020L, 2021L, share_population = 0.6),
