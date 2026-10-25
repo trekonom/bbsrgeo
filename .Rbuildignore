@@ -10,3 +10,7 @@
 ^\.scratch$
 ^dev$
 ^CODING_STANDARDS\.md$
+^\.githooks$
+^CLAUDE\.md$
+^GLOSSARY\.md$
+^air\.toml$
