@@ -267,7 +267,7 @@ transition_group_facts <- function(
 #' message; the conversion uses the shares as given (ADR 0001).
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
-#' @param analysis The [share_deviation_analysis()] of `data`.
+#' @param analysis The `share_deviation_analysis()` of `data`.
 #' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
 bbsrgeo_check_count_shares <- function(
@@ -345,7 +345,7 @@ bbsrgeo_check_count_shares <- function(
 #' stating a cause.
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
-#' @param analysis The [share_deviation_analysis()] of `data`.
+#' @param analysis The `share_deviation_analysis()` of `data`.
 #' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
 bbsrgeo_check_share_sums <- function(
