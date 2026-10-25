@@ -65,23 +65,24 @@ shape (the crosswalk tibble):
      (measured 2026-10-24). A group id with `rowsum()` and sorting is as fast
      as `ave()` (see `transition_group_ids()` and `group_sum()`).
 
-2. **Applying a crosswalk**. `conversion_steps()` plans the transitions a
-   conversion passes through and holds the unmapped-unit rule, shared by
-   `harmonize_regions()` and `check_regions()` so the two cannot disagree:
+2. **Applying a crosswalk**. `plan_conversion()` builds the Conversion plan
+   (the transitions each year passes through, via `conversion_steps()`, and
+   the unmapped units it drops), shared by `harmonize_regions()` and
+   `check_regions()` so the two cannot disagree:
    - `harmonize_regions()` takes a long panel dataset
      (AGS + year + value column(s)) and re-expresses it on one target-year
      boundary. For `"annual"` crosswalks it chains single-year transitions
-     year by year (`harmonize_path()` → `harmonize_step()`) when a direct
-     transition isn't available; `"conversion_*"` crosswalks convert
+     year by year (the plan's steps, applied by `harmonize_path()` →
+     `harmonize_step()`) when a direct transition isn't available; `"conversion_*"` crosswalks convert
      directly. `type = "absolute"` sums shares; `type = "ratio"` computes a
      weighted mean using the chosen `weight` basis (`population`/`area`/
      `employment`) as weights.
    - Forward conversion (older → newer boundary) is the default/intended use;
      backcasting (newer → older) requires `allow_backcast = TRUE` and emits a
      warning, since it's inherently less reliable.
-   - `check_regions()` is a pre-flight helper: it follows the same transitions
-     as `harmonize_regions()` over the area units alone and reports the rows
-     the conversion would drop as unmapped units.
+   - `check_regions()` is a pre-flight helper: it reads the same plan as
+     `harmonize_regions()` over the area units alone and reports the rows the
+     conversion would drop as unmapped units.
 
 AGS (Amtlicher Gemeindeschluessel) handling is centralized in
 `normalize_ags()`: BBSR xlsx cells are inconsistently
