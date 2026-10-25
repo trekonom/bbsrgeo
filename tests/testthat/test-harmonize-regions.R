@@ -267,6 +267,7 @@ test_that("harmonize_regions returns NA, not NaN, for an all-missing ratio", {
 test_that("harmonize_regions errors for employment weights before 1997", {
   crosswalk <- dplyr::bind_rows(
     crosswalk_row("01000001", "01000001", 1995L, 1996L),
+    crosswalk_row("01000001", "01000001", 1996L, 1997L),
     crosswalk_row(
       "01000001",
       "01000001",
@@ -1186,36 +1187,83 @@ test_that("the unmapped warning names several cases, capped", {
   )
 })
 
-test_that("a step refuses shares from rows that do not match the plan", {
+test_that("a step applies the shares and bases it carries", {
   crosswalk <- dplyr::bind_rows(
-    crosswalk_row("01000001", "01000001", 2020L, 2021L),
-    crosswalk_row("01000002", "01000002", 2020L, 2021L)
+    crosswalk_row(
+      "01000001",
+      "01000003",
+      2020L,
+      2021L,
+      share_population = 0.25
+    ),
+    crosswalk_row("01000001", "01000004", 2020L, 2021L, share_population = 0.75)
   )
-  plan <- plan_conversion(c("01000001", "01000002"), 2020L, crosswalk, 2021L)
-  group <- tibble::tibble(
-    ..ags = c("01000001", "01000002"),
-    ..year = 2020L,
-    population = 1
-  )
+  plan <- plan_conversion("01000001", 2020L, crosswalk, 2021L)
+  group <- tibble::tibble(..ags = "01000001", ..year = 2020L, population = 100)
   step <- plan$steps[["2020"]][[1]]
-  expect_no_error(
-    harmonize_step(
-      group,
-      step,
+  step$..share <- c(0.5, 0.5)
+  step$..base <- c(1, 1)
+  res <- harmonize_step(group, step, "population", "absolute")
+  expect_equal(res$population, c(50, 50))
+})
+
+# A conversion crosswalk with transitions from 2018, 2019 and 2020 to 2021. The
+# 2018 -> 2021 shares of 01000001 sum to 0.5; the 2019 -> 2021 ones to 0.5 as
+# well, in a unit the panel below does not have.
+unused_transition_crosswalk <- function() {
+  dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 2018L, 2021L, share_population = 0.5),
+    crosswalk_row("01000009", "01000009", 2019L, 2021L, share_population = 0.5),
+    crosswalk_row("01000001", "01000001", 2020L, 2021L)
+  )
+}
+
+test_that("shares are reported only for the transitions the plan uses", {
+  crosswalk <- unused_transition_crosswalk()
+  data <- tibble::tibble(
+    ags = "01000001",
+    year = c(2018L, 2020L),
+    population = 10
+  )
+  warning <- testthat::capture_warnings(
+    harmonize_regions(
+      data,
       crosswalk,
+      "ags",
+      "year",
       "population",
-      "absolute",
-      "population"
+      target_year = 2021L
     )
   )
-  expect_error(
-    harmonize_step(
-      group,
-      step,
-      crosswalk[2:1, ],
-      "population",
-      "absolute",
-      "population"
+  expect_length(warning, 1)
+  expect_match(warning, "1 ags_old/transition combination")
+  expect_match(warning, "01000001 \\(2018 -> 2021")
+  expect_no_match(warning, "01000009")
+})
+
+test_that("employment shares are checked only for the transitions used", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 1999L, 2000L),
+    crosswalk_row(
+      "01000001",
+      "01000001",
+      1998L,
+      2000L,
+      share_employment = 1,
+      employment_old = 50
+    )
+  )
+  data <- tibble::tibble(ags = "01000001", year = 1998L, rate = 2)
+  expect_no_error(
+    harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "rate",
+      type = "ratio",
+      weight = "employment",
+      target_year = 2000L
     )
   )
 })

@@ -40,5 +40,5 @@ lives. `dev/check-refs.R` finds a doc that names something that no longer
 exists; it cannot find one that names something that exists but no longer does
 what the doc says. `Rscript dev/check-refs.R --diff <merge-base>` lists the doc
 lines naming a function whose definition changed; read each one. Precedent: ADR 0001 kept pointing at
-`renormalize_forward_shares()` for the treatment order after it moved to
+the function that held the treatment order after it moved to
 `classify_share_deviations()`.

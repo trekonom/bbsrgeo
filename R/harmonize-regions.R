@@ -112,17 +112,6 @@ harmonize_regions <- function(
     all(value_cols %in% names(data))
   )
 
-  if (weight == "employment") {
-    # Before the plan, so a missing employment basis is not reported as a gap.
-    years <- as.integer(data[[year_col]])
-    target <- resolve_target_year(target_year, crosswalk)
-    check_employment_available(
-      crosswalk,
-      min(years, target),
-      max(years, target)
-    )
-  }
-
   plan <- plan_conversion(
     data[[ags_col]],
     data[[year_col]],
@@ -131,21 +120,16 @@ harmonize_regions <- function(
     allow_backcast
   )
   target_year_resolved <- plan$target_year
+  # Before the report, so a missing employment basis is not reported as a gap.
+  if (weight == "employment") {
+    check_employment_available(crosswalk, plan_rows(plan))
+  }
   report_dropped(plan$dropped)
 
   base <- tibble::tibble(..ags = plan$ags, ..year = plan$year)
   base <- dplyr::bind_cols(base, data[value_cols])
 
-  crosswalk_forward <- crosswalk
-  if (type == "absolute") {
-    crosswalk_forward <- renormalize_forward_shares(
-      crosswalk,
-      paste0("share_", weight),
-      min(base$..year),
-      target_year_resolved,
-      renormalize
-    )
-  }
+  applied <- applied_steps(plan, crosswalk, weight, type, renormalize)
 
   if (allow_backcast && any(base$..year > target_year_resolved)) {
     rlang::warn(paste(
@@ -158,15 +142,7 @@ harmonize_regions <- function(
   groups <- split(base, base$..year)
   result <- purrr::map_dfr(groups, function(group) {
     start_year <- group$..year[[1]]
-    harmonize_path(
-      group,
-      plan,
-      # Only the forward shares are renormalized; a backcast uses them as given.
-      if (start_year > target_year_resolved) crosswalk else crosswalk_forward,
-      value_cols,
-      type,
-      weight
-    )
+    harmonize_path(group, plan, applied, value_cols, type)
   })
 
   result$boundary_year <- target_year_resolved
@@ -180,14 +156,7 @@ harmonize_regions <- function(
   result
 }
 
-harmonize_path <- function(
-  group,
-  plan,
-  crosswalk,
-  value_cols,
-  type,
-  weight
-) {
+harmonize_path <- function(group, plan, applied, value_cols, type) {
   start_year <- group$..year[[1]]
   if (start_year == plan$target_year) {
     lost <- plan$dropped$ags[plan$dropped$year == start_year]
@@ -195,45 +164,80 @@ harmonize_path <- function(
   }
 
   current <- group
-  for (step in plan$steps[[as.character(start_year)]]) {
-    current <- harmonize_step(
-      current,
-      step,
-      crosswalk,
-      value_cols,
-      type,
-      weight
-    )
+  for (step in applied[[as.character(start_year)]]) {
+    current <- harmonize_step(current, step, value_cols, type)
   }
   current
 }
 
-# Applies one step of the plan to `group`. The plan holds the structure (which
-# unit maps to which, in the direction of the conversion); the shares and counts
-# come from the rows `step$..row` of `crosswalk`, which may differ from the
-# planned crosswalk in its shares only.
-harmonize_step <- function(group, step, crosswalk, value_cols, type, weight) {
+# The rows of the crosswalk the plan's steps use, as row numbers.
+plan_rows <- function(plan) {
+  steps <- unlist(plan$steps, recursive = FALSE, use.names = FALSE)
+  sort(unique(unlist(lapply(steps, function(step) step$..row))))
+}
+
+# The steps of the plan with the shares and bases they apply, in `..share` and
+# `..base` (the weight basis's `<weight>_old` count). For an absolute variable
+# the shares of the forward steps are corrected where classify_share_deviations()
+# finds a group's shares off a sum of 1 (see there for the treatments; ADR 0001)
+# and the deviations reported once, as a warning for the renormalized groups
+# and as a message within the tolerance. With `renormalize = FALSE` the shares
+# are used as given and only reported. A backcast step uses its shares as given.
+applied_steps <- function(plan, crosswalk, weight, type, renormalize) {
   share_col <- paste0("share_", weight)
-  base_col <- switch(
-    weight,
-    area = "area_old",
-    population = "population_old",
-    employment = "employment_old"
-  )
+  bases <- crosswalk[[paste0(weight, "_old")]] %||%
+    rep(NA_real_, nrow(crosswalk))
+  shares <- crosswalk[[share_col]]
 
-  rows <- crosswalk[step$..row, , drop = FALSE]
-  stopifnot(
-    identical(rows$ags_old, step$ags_old),
-    identical(rows$ags_new, step$ags_new),
-    identical(rows$year_from, step$year_from),
-    identical(rows$year_to, step$year_to)
-  )
+  forward_years <- names(plan$steps)[
+    as.integer(names(plan$steps)) < plan$target_year
+  ]
+  if (type == "absolute") {
+    forward <- unlist(
+      plan$steps[forward_years],
+      recursive = FALSE,
+      use.names = FALSE
+    )
+    rows <- sort(unique(unlist(lapply(forward, function(step) step$..row))))
+    if (length(rows) > 0) {
+      used <- crosswalk[rows, , drop = FALSE]
+      classified <- classify_share_deviations(used, weight)
+      report_treatments(
+        used,
+        share_col,
+        classified,
+        rep(TRUE, length(rows)),
+        renormalize
+      )
+      if (renormalize) {
+        shares[rows] <- classified$share
+      }
+    }
+  }
 
+  # Only the forward shares were corrected above; a backcast step reads the rest
+  # as given.
+  given <- crosswalk[[share_col]]
+  applied <- plan$steps
+  for (year in names(applied)) {
+    from_shares <- if (as.integer(year) < plan$target_year) shares else given
+    applied[[year]] <- lapply(applied[[year]], function(step) {
+      step$..share <- from_shares[step$..row]
+      step$..base <- bases[step$..row]
+      step
+    })
+  }
+  applied
+}
+
+# Applies one step of `applied_steps()` to `group`: the structure (which unit
+# maps to which, in the direction of the conversion) and the shares and bases.
+harmonize_step <- function(group, step, value_cols, type) {
   crosswalk_join <- tibble::tibble(
     ..ags = step$..from,
     ..ags_target = step$..to,
-    ..share = rows[[share_col]],
-    ..base = rows[[base_col]]
+    ..share = step$..share,
+    ..base = step$..base
   )
 
   joined <- dplyr::inner_join(group, crosswalk_join, by = "..ags")
@@ -287,12 +291,8 @@ report_dropped <- function(dropped) {
 
 # BBSR only offers employment as a weight basis from 1997 onward; the earlier
 # crosswalk rows have NA there. Fails early instead of returning NA/NaN values.
-check_employment_available <- function(crosswalk, from_year, to_year) {
-  needed <- crosswalk[
-    crosswalk$year_from >= from_year & crosswalk$year_to <= to_year,
-    ,
-    drop = FALSE
-  ]
+check_employment_available <- function(crosswalk, rows) {
+  needed <- crosswalk[rows, , drop = FALSE]
   if (!anyNA(needed$share_employment)) {
     return(invisible())
   }
@@ -309,8 +309,8 @@ check_employment_available <- function(crosswalk, from_year, to_year) {
       "the data to later years."
     ),
     hint,
-    from_year,
-    to_year
+    min(needed$year_from),
+    max(needed$year_to)
   ))
 }
 
@@ -331,34 +331,4 @@ weighted_mean_or_na <- function(x, w) {
     return(NA_real_)
   }
   stats::weighted.mean(x, w = w, na.rm = TRUE)
-}
-
-# Corrects `share_col` where classify_share_deviations() finds a group's shares
-# off a sum of 1 (see there for the treatments; ADR 0001). Reports the
-# renormalized groups once, as a warning, and the ones within the tolerance as
-# a message, for the transitions that conversion from `from_year` to `to_year`
-# passes through. With `renormalize = FALSE` the shares are used as given and
-# only reported.
-renormalize_forward_shares <- function(
-  crosswalk,
-  share_col,
-  from_year,
-  to_year,
-  renormalize = TRUE
-) {
-  classified <- classify_share_deviations(
-    crosswalk,
-    sub("^share_", "", share_col)
-  )
-  off <- classified$treatment != "ok"
-  if (!any(off)) {
-    return(crosswalk)
-  }
-  in_window <- crosswalk$year_from >= from_year & crosswalk$year_to <= to_year
-  report_treatments(crosswalk, share_col, classified, in_window, renormalize)
-  if (!renormalize) {
-    return(crosswalk)
-  }
-  crosswalk[[share_col]] <- classified$share
-  crosswalk
 }
