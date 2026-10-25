@@ -38,6 +38,23 @@ check_crosswalk <- function(crosswalk, weight = NULL, type = NULL) {
   invisible()
 }
 
+# The AGS of the data as 8-digit text. For a districts crosswalk a value of up
+# to 5 digits is a Kreisschluessel (another representation of the district, see
+# "District" in GLOSSARY.md) and becomes key + "000". Without that level, a
+# short value is ambiguous (a municipality that lost its leading zero, or a
+# district key), so it is only zero-padded to 8 digits.
+normalize_data_ags <- function(ags, crosswalk) {
+  out <- normalize_ags(ags)
+  levels <- unique(stats::na.omit(crosswalk[["level"]]))
+  if (!identical(as.character(levels), "districts")) {
+    return(out)
+  }
+  num <- suppressWarnings(as.numeric(trimws(as.character(ags))))
+  key <- !is.na(num) & num < 1e5
+  out[key] <- paste0(sprintf("%05.0f", num[key]), "000")
+  out
+}
+
 # `target_year` as a year: "current" is the latest `year_to` in the crosswalk.
 resolve_target_year <- function(target_year, crosswalk) {
   if (identical(target_year, "current")) {
@@ -183,7 +200,7 @@ plan_conversion <- function(
 ) {
   check_crosswalk(crosswalk)
   target_year <- resolve_target_year(target_year, crosswalk)
-  ags <- normalize_ags(ags)
+  ags <- normalize_data_ags(ags, crosswalk)
   year <- as.integer(year)
 
   crosswalk$..row <- seq_len(nrow(crosswalk))

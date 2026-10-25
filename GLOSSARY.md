@@ -11,7 +11,7 @@ Any territorial unit identified by an 8-digit AGS (Amtlicher Gemeindeschluessel)
 _Avoid_: region, geography, entity
 
 **Level**:
-Whether an area unit is a **District** or a **Municipality**. A property of the crosswalk, carried in its `level` column; the data must match it. A crosswalk that mixes levels is an error.
+Whether an area unit is a **District** or a **Municipality**. A property of the crosswalk, carried in its `level` column. At the district level the data may give an area unit as its 5-digit Kreisschluessel; data of the wrong level are reported as unmapped units. A crosswalk that mixes levels is an error.
 _Avoid_: scale, granularity
 
 **District**:

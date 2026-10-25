@@ -18,6 +18,9 @@
 #' @param data A dataset with an AGS column and a year column.
 #' @param crosswalk A crosswalk read with [bbsr_crosswalk_read()].
 #' @param ags_col Name of the AGS column in `data`.
+#'   With a districts crosswalk a district may be given as its 5-digit
+#'   Kreisschluessel; the AGS are 8-digit in the result and in the unmapped
+#'   units.
 #' @param year_col Name of the year column in `data`.
 #' @param target_year Target year of the boundary, or `"current"`, as in
 #'   [harmonize_regions()].

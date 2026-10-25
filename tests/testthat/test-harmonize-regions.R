@@ -1296,3 +1296,19 @@ test_that("harmonize_regions names the columns the crosswalk lacks", {
     harmonize(crosswalk[names(crosswalk) != "population_old"], "absolute")
   )
 })
+
+test_that("harmonize_regions converts districts given as 5-digit keys", {
+  crosswalk <- crosswalk_row("07137000", "07137000", 2020L, 2021L)
+  crosswalk$level <- "districts"
+  data <- tibble::tibble(ags = "07137", year = 2020L, value = 5)
+  res <- expect_no_warning(harmonize_regions(
+    data,
+    crosswalk,
+    "ags",
+    "year",
+    "value",
+    target_year = 2021L
+  ))
+  expect_equal(res$ags, "07137000")
+  expect_equal(res$value, 5)
+})

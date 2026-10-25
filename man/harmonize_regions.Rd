@@ -24,7 +24,10 @@ harmonize_regions(
 (districts or municipalities) is the level of \code{data}; a crosswalk that mixes
 levels is an error.}
 
-\item{ags_col}{Name of the AGS column in \code{data}.}
+\item{ags_col}{Name of the AGS column in \code{data}.
+With a districts crosswalk a district may be given as its 5-digit
+Kreisschluessel; the AGS are 8-digit in the result and in the unmapped
+units.}
 
 \item{year_col}{Name of the year column in \code{data}.}
 

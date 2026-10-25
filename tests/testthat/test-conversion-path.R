@@ -165,3 +165,28 @@ test_that("a step maps from and to in the direction of the conversion", {
   step <- back$steps[["2021"]][[1]]
   expect_equal(c(step$..from, step$..to), c("01000002", "01000001"))
 })
+
+test_that("a districts crosswalk reads a 5-digit Kreisschluessel as key + 000", {
+  crosswalk <- transition_rows(2020)
+  crosswalk$level <- "districts"
+  plan <- plan_conversion(
+    c("07137", "7137", "01001", "07137000"),
+    2020L,
+    crosswalk,
+    2021L
+  )
+  expect_equal(plan$ags, c("07137000", "07137000", "01001000", "07137000"))
+})
+
+test_that("without the districts level a short AGS is only zero-padded", {
+  crosswalk <- transition_rows(2020)
+  expect_equal(
+    plan_conversion("07137", 2020L, crosswalk, 2021L)$ags,
+    "00007137"
+  )
+  crosswalk$level <- "municipalities"
+  expect_equal(
+    plan_conversion("07137", 2020L, crosswalk, 2021L)$ags,
+    "00007137"
+  )
+})

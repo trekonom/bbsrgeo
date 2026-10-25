@@ -70,6 +70,9 @@
 #'   (districts or municipalities) is the level of `data`; a crosswalk that mixes
 #'   levels is an error.
 #' @param ags_col Name of the AGS column in `data`.
+#'   With a districts crosswalk a district may be given as its 5-digit
+#'   Kreisschluessel; the AGS are 8-digit in the result and in the unmapped
+#'   units.
 #' @param year_col Name of the year column in `data`.
 #' @param value_cols Character vector with the names of the value columns to
 #'   convert.

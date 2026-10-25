@@ -18,7 +18,10 @@ check_regions(
 
 \item{crosswalk}{A crosswalk read with \code{\link[=bbsr_crosswalk_read]{bbsr_crosswalk_read()}}.}
 
-\item{ags_col}{Name of the AGS column in \code{data}.}
+\item{ags_col}{Name of the AGS column in \code{data}.
+With a districts crosswalk a district may be given as its 5-digit
+Kreisschluessel; the AGS are 8-digit in the result and in the unmapped
+units.}
 
 \item{year_col}{Name of the year column in \code{data}.}
 
