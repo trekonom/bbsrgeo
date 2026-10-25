@@ -79,7 +79,7 @@ The transitions a conversion of a panel passes through, per start year, and the 
 _Avoid_: path, route
 
 **Unmapped unit**:
-An area unit in the data with no crosswalk entry for a transition. Always dropped with a warning, never passed through. `check_regions()` reports the rows this rule would drop, following the same transitions as `harmonize_regions()` (`R/conversion-path.R`).
+An area unit in the data with no crosswalk entry for a transition. Always dropped with a warning, never passed through. The **Conversion plan** lists them; `harmonize_regions()` warns once about them and `check_regions()` reports the rows they would drop.
 _Avoid_: missing unit, orphan
 
 ### Variables
