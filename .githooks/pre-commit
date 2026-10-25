@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Refuse the commit when R code is not formatted with air, or when a steering
-# doc names a file or function that does not exist (dev/check-refs.R), then
-# lists the docs naming a function that changed (check-refs.R --diff).
+# doc names a file or function that does not exist (dev/check-refs.R), or when
+# a staged line calls suppressWarnings()/suppressMessages() without a comment
+# (dev/check-suppress.R), then lists the docs naming a function that changed
+# (check-refs.R --diff).
 # Enabled by: git config core.hooksPath .githooks
 set -e
 cd "$(git rev-parse --show-toplevel)"
 dev/format.sh --check
 Rscript dev/check-refs.R
+Rscript dev/check-suppress.R
 # Informational, never fails: docs that name a function this commit changes.
 Rscript dev/check-refs.R --diff || true

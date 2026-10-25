@@ -26,7 +26,7 @@ not apply the Cochem-Zell transfer" wording this rule replaces
   needs a reason beyond tidiness: if two tests call it, each reruns the work.
   A helper that only builds a small constructed tibble is fine.
 - Keep `suppressWarnings()` around the one call that emits the known
-  warning, with a comment naming the warning.
+  warning. `dev/check-suppress.R` (pre-commit) requires the comment naming it.
 - Give a value that appears in two places (year range, district code,
   tolerance) one named constant.
 - Tolerances come from measured data: state the observed maximum in the
