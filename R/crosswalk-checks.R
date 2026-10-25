@@ -199,9 +199,10 @@ bbsrgeo_check_share_sums <- function(data) {
     sprintf(
       paste(
         "%d ags_old/year_from combination(s) have a sum of area shares that",
-        "deviates from 1 by more than 1%%. By pattern:"
+        "deviates from 1 by more than %g%%. By pattern:"
       ),
-      nrow(off)
+      nrow(off),
+      SHARE_SUM_TOLERANCE * 100
     ),
     items,
     "Please check the original file if in doubt."
