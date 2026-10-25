@@ -264,7 +264,7 @@ harmonize_step <- function(
   dplyr::rename(result, ..ags = "..ags_target")
 }
 
-# Warns once about the area units of the plan that the conversion drops, and
+# Warns once about the area units of the plan whose values the conversion loses, and
 # where to find the complete list.
 report_dropped <- function(dropped) {
   if (nrow(dropped) == 0) {
@@ -272,9 +272,10 @@ report_dropped <- function(dropped) {
   }
   rlang::warn(sprintf(
     paste(
-      "%d area unit/year combination(s) without a matching crosswalk entry",
-      "were dropped (e.g. %s). Run check_regions() with the same arguments",
-      "for a complete list; it is also in attr(<result>, \"unmapped\")."
+      "%d area unit/year combination(s) have no matching crosswalk entry in a",
+      "transition, so their values are lost at least in part (e.g. %s). Run",
+      "check_regions() with the same arguments for a complete list; it is also",
+      "in attr(<result>, \"unmapped\")."
     ),
     nrow(dropped),
     describe_dropped(dropped[1, ])
