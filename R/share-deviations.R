@@ -56,8 +56,12 @@ share_sum_deviates <- function(sums) {
 #   allows, `COUNT_RESOLUTION * (1 + n_rows) / total`
 # An absent share or count column gives treatment "ok" and no count gap, so
 # callers skip that basis without an error.
-classify_share_deviations <- function(crosswalk, basis) {
-  facts <- transition_group_facts(crosswalk, basis)
+classify_share_deviations <- function(
+  crosswalk,
+  basis,
+  analysis = share_deviation_analysis(crosswalk)
+) {
+  facts <- group_facts(analysis, basis)
   n <- nrow(crosswalk)
   sums <- facts$share_sum
   share <- crosswalk[[paste0("share_", basis)]] %||% rep(NA_real_, n)
@@ -74,7 +78,7 @@ classify_share_deviations <- function(crosswalk, basis) {
     is_true(facts$counts_observed & total == 0)
   area_sums <- rep(NA_real_, n)
   if (any(zero_candidate)) {
-    area_sums <- transition_group_facts(crosswalk, "area")$share_sum
+    area_sums <- group_facts(analysis, "area")$share_sum
   }
   zero_basis <- zero_candidate & is_true(area_sums > 0)
 
@@ -123,15 +127,17 @@ classify_share_deviations <- function(crosswalk, basis) {
 # deviation" in GLOSSARY.md). One row per crosswalk row, repeated over its
 # group: `share_sum` (area) and `pattern`, "a", "b" or "c", NA where the area
 # shares sum to 1 within the tolerance.
-share_deviation_patterns <- function(crosswalk) {
+share_deviation_patterns <- function(
+  crosswalk,
+  analysis = share_deviation_analysis(crosswalk)
+) {
   n <- nrow(crosswalk)
-  area <- transition_group_facts(crosswalk, "area")
+  area <- group_facts(analysis, "area")
   counts_differ <- area$counts_differ |
-    transition_group_facts(crosswalk, "population")$counts_differ |
-    transition_group_facts(crosswalk, "employment")$counts_differ
+    group_facts(analysis, "population")$counts_differ |
+    group_facts(analysis, "employment")$counts_differ
   not_one <- !is_true(abs(crosswalk$share_area - 1) <= SHARE_SUM_TOLERANCE)
-  all_one <- group_sum(as.numeric(not_one), transition_group_ids(crosswalk)) ==
-    0
+  all_one <- group_sum(as.numeric(not_one), analysis$gid) == 0
 
   deviates <- is_true(share_sum_deviates(area$share_sum))
   pattern <- rep(NA_character_, n)
@@ -165,6 +171,31 @@ group_sum <- function(x, gid) {
   unname(drop(rowsum(x, gid, reorder = TRUE))[gid])
 }
 
+# The Transition groups of a crosswalk and, once asked for, their facts per
+# weight basis. Built once for a crosswalk and passed to the functions below, so
+# the group ids and the facts are not recomputed for every basis and every
+# caller (the real files have ~150k groups). An environment, so the facts it
+# computes are kept. It must be used with the crosswalk it was built for.
+share_deviation_analysis <- function(crosswalk) {
+  analysis <- new.env(parent = emptyenv())
+  analysis$crosswalk <- crosswalk
+  analysis$gid <- transition_group_ids(crosswalk)
+  analysis$facts <- list()
+  analysis
+}
+
+# The transition_group_facts() of one weight basis, computed on first use.
+group_facts <- function(analysis, basis) {
+  if (is.null(analysis$facts[[basis]])) {
+    analysis$facts[[basis]] <- transition_group_facts(
+      analysis$crosswalk,
+      basis,
+      analysis$gid
+    )
+  }
+  analysis$facts[[basis]]
+}
+
 # Facts about the transition group of every crosswalk row, for one weight
 # basis. One value per crosswalk row, repeated over the rows of its group:
 # - n_rows: rows in the group
@@ -176,7 +207,11 @@ group_sum <- function(x, gid) {
 #   row); a missing count makes it FALSE
 # - counts_non_negative: no observed count is negative
 # An absent share or count column gives NA sums and FALSE conditions.
-transition_group_facts <- function(crosswalk, basis) {
+transition_group_facts <- function(
+  crosswalk,
+  basis,
+  gid = transition_group_ids(crosswalk)
+) {
   share <- crosswalk[[paste0("share_", basis)]]
   count <- crosswalk[[paste0(basis, "_old")]]
   has_share <- !is.null(share)
@@ -188,7 +223,6 @@ transition_group_facts <- function(crosswalk, basis) {
     count <- rep(NA_real_, nrow(crosswalk))
   }
   n <- nrow(crosswalk)
-  gid <- transition_group_ids(crosswalk)
   # Extremes from the counts sorted within each group, missing last.
   n_missing <- group_sum(as.numeric(is.na(count)), gid)
   ordered <- order(gid, count)

@@ -7,6 +7,7 @@
 #' Reported as one warning, without a cause.
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
+#' @param analysis The [share_deviation_analysis()] of `data`.
 #' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
 bbsrgeo_check_names <- function(data) {
@@ -80,9 +81,13 @@ bbsrgeo_check_names <- function(data) {
 #' message; the conversion uses the shares as given (ADR 0001).
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
+#' @param analysis The [share_deviation_analysis()] of `data`.
 #' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
-bbsrgeo_check_count_shares <- function(data) {
+bbsrgeo_check_count_shares <- function(
+  data,
+  analysis = share_deviation_analysis(data)
+) {
   items <- list()
   for (basis in c("area", "population", "employment")) {
     share_col <- paste0("share_", basis)
@@ -90,7 +95,7 @@ bbsrgeo_check_count_shares <- function(data) {
     if (!all(c(share_col, count_col) %in% names(data))) {
       next
     }
-    classified <- classify_share_deviations(data, basis)
+    classified <- classify_share_deviations(data, basis, analysis)
     disagree <- classified$count_gap_exceeds_resolution
     if (!any(disagree)) {
       next
@@ -154,10 +159,14 @@ bbsrgeo_check_count_shares <- function(data) {
 #' stating a cause.
 #'
 #' @param data Tibble read by [bbsr_crosswalk_read()].
+#' @param analysis The [share_deviation_analysis()] of `data`.
 #' @return A `finding()`, or `NULL` when nothing is found.
 #' @noRd
-bbsrgeo_check_share_sums <- function(data) {
-  classified <- share_deviation_patterns(data)
+bbsrgeo_check_share_sums <- function(
+  data,
+  analysis = share_deviation_analysis(data)
+) {
+  classified <- share_deviation_patterns(data, analysis)
   deviating <- !is.na(classified$pattern)
   if (!any(deviating)) {
     return(NULL)

@@ -38,8 +38,9 @@ bbsr_crosswalk_read <- function(path, fix = TRUE) {
     data <- bbsr_crosswalk_fix(data)
   }
   report_finding(bbsrgeo_check_names(data))
-  report_finding(bbsrgeo_check_share_sums(data))
-  report_finding(bbsrgeo_check_count_shares(data))
+  analysis <- share_deviation_analysis(data)
+  report_finding(bbsrgeo_check_share_sums(data, analysis))
+  report_finding(bbsrgeo_check_count_shares(data, analysis))
   data
 }
 
