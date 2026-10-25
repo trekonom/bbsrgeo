@@ -161,6 +161,13 @@ bbsrgeo_read_sheet <- function(path, sheet, meta) {
       col_types = "text"
     )
   )
+  bbsrgeo_parse_sheet(raw, sheet, meta)
+}
+
+# Parses one sheet as read by readxl (all text, no column names, the header row
+# included) into the crosswalk tibble. Separate from the reading so the layouts
+# can be tested with a constructed table.
+bbsrgeo_parse_sheet <- function(raw, sheet, meta) {
   # Row 1 is the header; its text tells the 10-column layouts apart.
   header <- unlist(raw[1, ], use.names = FALSE)
   raw <- raw[-1, ]
@@ -227,7 +234,7 @@ bbsrgeo_read_sheet <- function(path, sheet, meta) {
       ),
       n,
       sheet,
-      basename(path)
+      meta$file_name
     ))
   }
   names(raw) <- cols
