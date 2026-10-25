@@ -10,7 +10,7 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 | `ready-for-human`          | `ready-for-human`    | Requires human implementation            |
 | `wontfix`                  | `wontfix`            | Will not be actioned                     |
 
-`done` is not a triage role: it marks an implemented issue (see `issue-tracker.md`).
+`done` is not a triage role: on GitHub an implemented issue is simply closed (see `issue-tracker.md`).
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 

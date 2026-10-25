@@ -28,7 +28,7 @@ in `DESCRIPTION`.
 - Build the package: `R CMD build . --no-build-vignettes`
 - Full check: `NOT_CRAN=true R CMD check bbsrgeo_0.0.0.9000.tar.gz --no-manual --no-build-vignettes -o /tmp/rcheck`
 - Rebuild README from README.Rmd: `Rscript dev/render-readme.R`
-- List open issues (status not `done`/`wontfix`): `dev/issues.sh`
+- List open GitHub issues with their labels: `dev/issues.sh` (the issues under `.scratch/` are history)
 
 Tests use `testthat` edition 3 (`Config/testthat/edition: 3` in DESCRIPTION).
 Tests that hit the live BBSR site or require network access are guarded with
@@ -118,7 +118,7 @@ previously debugged source-data quirks.
 
 ### Issue tracker
 
-Issues and specs are local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+Issues and specs are GitHub issues in `trekonom/bbsrgeo` (use the `gh` CLI). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
