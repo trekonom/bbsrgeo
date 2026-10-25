@@ -202,6 +202,26 @@ test_that("an id whose transition is absent is silent; each id gets one line", {
   expect_no_match(msgs, "g (", fixed = TRUE)
 })
 
+test_that("an id is relevant if any row's transition is present, and then must match fully", {
+  fixes <- fix_table(
+    list(id = "f", ags_old = "02", column = "share_area", value = "1"),
+    list(
+      id = "f",
+      ags_old = "03",
+      column = "share_area",
+      value = "0.5",
+      n_rows = 2L
+    )
+  )
+  fixes$year_from[2] <- 1990L
+  fixes$year_to[2] <- 1991L
+  expect_message(
+    res <- apply_crosswalk_fixes(small_crosswalk(), fixes),
+    "not applied.*f.*matched 0 row"
+  )
+  expect_equal(res, small_crosswalk())
+})
+
 test_that("bbsr_crosswalk_read() applies fixes unless fix = FALSE", {
   path <- test_path("fixtures", "ref-kreise-testfixture-jaehrlich.xlsx")
   # The fixture has no documented row, so the read is unchanged and silent.
