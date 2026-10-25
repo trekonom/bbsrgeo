@@ -311,3 +311,92 @@ test_that("transitions to a year after the last supported one are dropped, with 
   expect_equal(res$year_to, 2024L)
   expect_no_message(drop_newer_transitions(d[1, ]))
 })
+
+# A sheet as readxl returns it (all text, no column names, the header row
+# first), built from a header and data rows of the layout under test.
+raw_sheet <- function(...) {
+  rows <- list(...)
+  as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE) |>
+    tibble::as_tibble(.name_repair = "minimal")
+}
+parse_meta <- list(
+  level = "districts",
+  kind = "annual",
+  target_year = NA_integer_,
+  file_name = "ref-kreise-constructed.xlsx"
+)
+
+test_that("bbsrgeo_parse_sheet parses the 8-column layout without employment", {
+  raw <- raw_sheet(
+    paste0("H", 1:8),
+    c("1000001", "A", "0.4", "0.5", "40", "50", "1000002", "B")
+  )
+  d <- bbsrgeo_parse_sheet(raw, "2019-2020", parse_meta)
+  expect_equal(d$ags_old, "01000001")
+  expect_equal(d$ags_new, "01000002")
+  expect_equal(c(d$year_from, d$year_to), c(2019L, 2020L))
+  expect_equal(c(d$share_area, d$share_population), c(0.4, 0.5))
+  expect_true(is.na(d$share_employment) && is.na(d$employment_old))
+})
+
+test_that("bbsrgeo_parse_sheet parses the 10-column layout with employment", {
+  raw <- raw_sheet(
+    paste0("H", 1:10),
+    c("01000001", "A", "0.4", "0.5", "0.6", "40", "50", "60", "01000002", "B")
+  )
+  d <- bbsrgeo_parse_sheet(raw, "2019-2020", parse_meta)
+  expect_equal(c(d$share_employment, d$employment_old), c(0.6, 60))
+  expect_equal(d$name_new, "B")
+})
+
+test_that("bbsrgeo_parse_sheet parses the Regionalschluessel layout", {
+  raw <- raw_sheet(
+    c("H1", "Regionalschlüssel", paste0("H", 3:10)),
+    c(
+      "01000001",
+      "010000010000",
+      "A",
+      "0.4",
+      "0.5",
+      "40",
+      "50",
+      "01000002",
+      "010000020000",
+      "B"
+    )
+  )
+  d <- bbsrgeo_parse_sheet(
+    raw,
+    "2022",
+    modifyList(parse_meta, list(kind = "annual"))
+  )
+  expect_equal(d$ags_new, "01000002")
+  expect_equal(d$population_old, 50)
+  expect_true(is.na(d$share_employment))
+})
+
+test_that("bbsrgeo_parse_sheet drops the second header row of labels", {
+  raw <- raw_sheet(
+    paste0("H", 1:8),
+    c("Kennziffer", "Name", "a", "b", "c", "d", "Kennziffer", "Name"),
+    c("01000001", "A", "1", "1", "10", "10", "01000001", "A")
+  )
+  expect_equal(nrow(bbsrgeo_parse_sheet(raw, "2019-2020", parse_meta)), 1)
+})
+
+test_that("bbsrgeo_parse_sheet names the sheet and file for an unexpected layout", {
+  raw <- raw_sheet(paste0("H", 1:9), paste0("x", 1:9))
+  expect_error(
+    bbsrgeo_parse_sheet(raw, "2019-2020", parse_meta),
+    "Unexpected number of columns \\(9\\) in sheet '2019-2020' of ref-kreise-constructed.xlsx"
+  )
+})
+
+test_that("bbsrgeo_file_meta warns when the file name gives no level", {
+  expect_warning(
+    meta <- bbsrgeo_file_meta("ref-unbekannt-2020.xlsx"),
+    "Could not derive 'level'"
+  )
+  expect_true(is.na(meta$level))
+  expect_equal(meta$kind, "annual")
+})
