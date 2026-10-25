@@ -1163,3 +1163,59 @@ test_that("renormalize = FALSE uses the shares as given and reports the deviatio
   )
   expect_equal(sort(res$population), c(300, 600))
 })
+
+test_that("the unmapped warning names several cases, capped", {
+  crosswalk <- crosswalk_row("01000001", "01000001", 2020L, 2021L)
+  ags <- sprintf("010001%02d", 10:17)
+  data <- tibble::tibble(ags = ags, year = 2020L, population = 1)
+
+  warning <- testthat::capture_warnings(
+    harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "population",
+      target_year = 2021L
+    )
+  )
+  expect_match(warning, "8 area unit/year combination")
+  expect_equal(
+    lengths(regmatches(warning, gregexpr("01000[0-9]+ in", warning))),
+    5
+  )
+})
+
+test_that("a step refuses shares from rows that do not match the plan", {
+  crosswalk <- dplyr::bind_rows(
+    crosswalk_row("01000001", "01000001", 2020L, 2021L),
+    crosswalk_row("01000002", "01000002", 2020L, 2021L)
+  )
+  plan <- plan_conversion(c("01000001", "01000002"), 2020L, crosswalk, 2021L)
+  group <- tibble::tibble(
+    ..ags = c("01000001", "01000002"),
+    ..year = 2020L,
+    population = 1
+  )
+  step <- plan$steps[["2020"]][[1]]
+  expect_no_error(
+    harmonize_step(
+      group,
+      step,
+      crosswalk,
+      "population",
+      "absolute",
+      "population"
+    )
+  )
+  expect_error(
+    harmonize_step(
+      group,
+      step,
+      crosswalk[2:1, ],
+      "population",
+      "absolute",
+      "population"
+    )
+  )
+})

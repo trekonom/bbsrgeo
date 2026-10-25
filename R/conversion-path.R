@@ -148,8 +148,9 @@ unmapped_at_target_year <- function(ags, crosswalk, target_year) {
 # - ags, year: the normalized area units and integer years of the panel
 # - target_year: `target_year` resolved to a year
 # - steps: per year of the panel (named by year), the transitions to apply in
-#   order; each is a crosswalk subset with its row number in `..row`. Empty for
-#   the target year.
+#   order; each is a crosswalk subset with its row number in `..row` and the
+#   units it maps from and to, in the direction of the conversion, in `..from`
+#   and `..to`. Empty for the target year.
 # - dropped: the area units (per year) the conversion loses at least in part,
 #   and the first transition each is lost at: a tibble with `ags`, `year`,
 #   `year_from`, `year_to` (both equal to `target_year` for the target-year
@@ -174,7 +175,16 @@ plan_conversion <- function(
     if (y == target_year) {
       return(list())
     }
-    conversion_steps(crosswalk, y, target_year, allow_backcast)
+    cols <- step_columns(y < target_year)
+    lapply(
+      conversion_steps(crosswalk, y, target_year, allow_backcast),
+      function(step) {
+        # The units a step maps from and to, in the direction of the conversion.
+        step$..from <- step[[cols$from]]
+        step$..to <- step[[cols$to]]
+        step
+      }
+    )
   })
   names(steps) <- years
 
@@ -220,12 +230,10 @@ find_lost_units <- function(ags, steps, crosswalk, start_year, target_year) {
       year_to = target_year
     ))
   }
-  cols <- step_columns(start_year < target_year)
-
   lineage <- tibble::tibble(origin = ags, current = ags)
   lost <- list()
   for (step in steps) {
-    mapped <- lineage$current %in% step[[cols$from]]
+    mapped <- lineage$current %in% step$..from
     if (any(!mapped)) {
       lost[[length(lost) + 1L]] <- tibble::tibble(
         ags = unique(lineage$origin[!mapped]),
@@ -234,8 +242,8 @@ find_lost_units <- function(ags, steps, crosswalk, start_year, target_year) {
       )
     }
     onward <- unique(tibble::tibble(
-      current = step[[cols$from]],
-      onward = step[[cols$to]]
+      current = step$..from,
+      onward = step$..to
     ))
     lineage <- dplyr::inner_join(
       lineage[mapped, , drop = FALSE],
@@ -259,12 +267,16 @@ find_lost_units <- function(ags, steps, crosswalk, start_year, target_year) {
   lost[!duplicated(lost$ags), , drop = FALSE]
 }
 
-# One row of `plan$dropped` as "<ags> in <year>: <where>", for messages.
-describe_dropped <- function(row) {
-  where <- if (row$year_from == row$year_to) {
-    "not an ags_new of any transition into the target year"
-  } else {
-    sprintf("no entry in the %d -> %d transition", row$year_from, row$year_to)
-  }
-  sprintf("%s in %d: %s", row$ags, row$year, where)
+# The rows of `plan$dropped` as "<ags> in <year>: <where>", for messages.
+describe_dropped <- function(dropped) {
+  where <- ifelse(
+    dropped$year_from == dropped$year_to,
+    "not an ags_new of any transition into the target year",
+    sprintf(
+      "no entry in the %d -> %d transition",
+      dropped$year_from,
+      dropped$year_to
+    )
+  )
+  sprintf("%s in %d: %s", dropped$ags, dropped$year, where)
 }

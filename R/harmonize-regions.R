@@ -194,31 +194,25 @@ harmonize_path <- function(
     return(group[!(group$..ags %in% lost), , drop = FALSE])
   }
 
-  forward <- start_year < plan$target_year
   current <- group
   for (step in plan$steps[[as.character(start_year)]]) {
-    # The plan holds the structure; the shares come from `crosswalk`.
-    step_crosswalk <- crosswalk[step$..row, , drop = FALSE]
     current <- harmonize_step(
       current,
-      step_crosswalk,
+      step,
+      crosswalk,
       value_cols,
       type,
-      weight,
-      forward
+      weight
     )
   }
   current
 }
 
-harmonize_step <- function(
-  group,
-  step_crosswalk,
-  value_cols,
-  type,
-  weight,
-  forward
-) {
+# Applies one step of the plan to `group`. The plan holds the structure (which
+# unit maps to which, in the direction of the conversion); the shares and counts
+# come from the rows `step$..row` of `crosswalk`, which may differ from the
+# planned crosswalk in its shares only.
+harmonize_step <- function(group, step, crosswalk, value_cols, type, weight) {
   share_col <- paste0("share_", weight)
   base_col <- switch(
     weight,
@@ -227,13 +221,19 @@ harmonize_step <- function(
     employment = "employment_old"
   )
 
-  cols <- step_columns(forward)
+  rows <- crosswalk[step$..row, , drop = FALSE]
+  stopifnot(
+    identical(rows$ags_old, step$ags_old),
+    identical(rows$ags_new, step$ags_new),
+    identical(rows$year_from, step$year_from),
+    identical(rows$year_to, step$year_to)
+  )
 
   crosswalk_join <- tibble::tibble(
-    ..ags = step_crosswalk[[cols$from]],
-    ..ags_target = step_crosswalk[[cols$to]],
-    ..share = step_crosswalk[[share_col]],
-    ..base = step_crosswalk[[base_col]]
+    ..ags = step$..from,
+    ..ags_target = step$..to,
+    ..share = rows[[share_col]],
+    ..base = rows[[base_col]]
   )
 
   joined <- dplyr::inner_join(group, crosswalk_join, by = "..ags")
@@ -278,7 +278,10 @@ report_dropped <- function(dropped) {
       "in attr(<result>, \"unmapped\")."
     ),
     nrow(dropped),
-    describe_dropped(dropped[1, ])
+    paste(
+      describe_dropped(utils::head(dropped, MAX_FINDING_EXAMPLES)),
+      collapse = "; "
+    )
   ))
 }
 
