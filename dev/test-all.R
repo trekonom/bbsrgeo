@@ -5,7 +5,12 @@
 # NOT_CRAN=true); a skipped test here means the network or BBSR was
 # unreachable, and the run proves nothing for that test.
 # Usage: Rscript dev/test-all.R
-results <- testthat::test_local(".", stop_on_failure = FALSE)
+# The messages the package signals while the tests run (fixes applied, rows
+# ignored) bury the result; the problems below are listed at the end.
+results <- withCallingHandlers(
+  testthat::test_local(".", stop_on_failure = FALSE),
+  message = function(m) invokeRestart("muffleMessage")
+)
 res <- as.data.frame(results)
 
 # A test file that gets much slower is a performance regression the tests do
