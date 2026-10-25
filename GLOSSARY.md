@@ -66,6 +66,10 @@ _Avoid_: share error, bad shares
 The correction applied to the shares of one transition group in a share deviation, chosen once by `classify_share_deviations()` for both the read-time checks and the conversion: _rounding_ (sum within the tolerance, rescaled to 1), _zero basis_ (a unit without population or employment, split by area share), _parts_ (counts that differ between rows read as the parts going to each target) or _renormalize_ (anything else, rescaled to 1). A group that sums to 1 needs none.
 _Avoid_: fix, correction method
 
+**Source-data fix**:
+A documented correction to one row of a BBSR crosswalk file, made when the file is read and only where the correct value is verified. Listed with the evidence for it. Differs from a **Treatment**, which rescales shares during conversion from the shares alone and changes no row of the crosswalk.
+_Avoid_: correction, patch, recode (a recode is one kind of fix)
+
 **Count gap**:
 How far `count / total` of a row lies from its share in a transition group whose counts read as parts and whose shares sum to 1. A gap larger than the counts' resolution is reported by `bbsr_crosswalk_read()`; the conversion still uses the shares as given.
 _Avoid_: count error, mismatch
