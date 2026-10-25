@@ -74,6 +74,10 @@ _Avoid_: correction, patch, recode (a recode is one kind of fix)
 How far `count / total` of a row lies from its share in a transition group whose counts read as parts and whose shares sum to 1. A gap larger than the counts' resolution is reported by `bbsr_crosswalk_read()`; the conversion still uses the shares as given.
 _Avoid_: count error, mismatch
 
+**Conversion plan**:
+The transitions a conversion of a panel passes through, per start year, and the **Unmapped units** it would drop with the transition each is lost at. Holds structure only, no values or shares. Built once by `plan_conversion()` (`R/conversion-path.R`) and read by both `harmonize_regions()` and `check_regions()`, so the two cannot disagree.
+_Avoid_: path, route
+
 **Unmapped unit**:
 An area unit in the data with no crosswalk entry for a transition. Always dropped with a warning, never passed through. `check_regions()` reports the rows this rule would drop, following the same transitions as `harmonize_regions()` (`R/conversion-path.R`).
 _Avoid_: missing unit, orphan
