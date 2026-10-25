@@ -142,3 +142,46 @@ test_that("check_regions reports exactly the rows harmonize_regions drops", {
     sort(paste(reported$ags, reported$year))
   )
 })
+
+test_that("the plan lists exactly the units whose value harmonize_regions loses", {
+  # Four outcomes: lost whole at the first step (99999999), lost whole at a
+  # later step (01000001), lost in part at a later step (01000006 splits in
+  # half, one half has no 2021 -> 2022 entry) and fully mapped (01000003).
+  crosswalk <- rbind(
+    path_crosswalk("01000001", "01000002", 2020, 2021),
+    path_crosswalk("01000003", "01000003", 2020, 2021),
+    path_crosswalk("01000006", "01000007", 2020, 2021),
+    path_crosswalk("01000006", "01000008", 2020, 2021),
+    path_crosswalk("01000003", "01000003", 2021, 2022),
+    path_crosswalk("01000007", "01000007", 2021, 2022)
+  )
+  crosswalk$share_population[crosswalk$ags_old == "01000006"] <- 0.5
+  data <- tibble::tibble(
+    ags = c("01000001", "01000003", "01000006", "99999999"),
+    year = 2020L,
+    population = 10
+  )
+
+  # The oracle converts each row alone and sees whether its value survives.
+  loses_value <- vapply(
+    seq_len(nrow(data)),
+    function(i) {
+      converted <- suppressWarnings(
+        harmonize_regions(
+          data[i, ],
+          crosswalk,
+          "ags",
+          "year",
+          "population",
+          target_year = 2022L
+        )
+      )
+      sum(converted$population) < data$population[[i]]
+    },
+    logical(1)
+  )
+  expect_equal(loses_value, c(TRUE, FALSE, TRUE, TRUE))
+
+  plan <- plan_conversion(data$ags, data$year, crosswalk, 2022L)
+  expect_setequal(plan$dropped$ags, data$ags[loses_value])
+})
