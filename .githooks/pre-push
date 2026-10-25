@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Refuse the push when the test suite fails, skips, or warns (about a minute,
-# needs network for the validation tests). A push that only changes Markdown
-# files and .scratch/ skips the suite and runs dev/check-refs.R instead.
+# Refuse the push when man/ or NAMESPACE are stale against the roxygen comments
+# (dev/document.R regenerates them and fails on a roxygen warning), or when the
+# test suite fails, skips, or warns (about a minute, needs network for the
+# validation tests). A push that only changes Markdown files and .scratch/
+# skips both and runs dev/check-refs.R instead.
 # Bypass once with: git push --no-verify
 # Enabled by: git config core.hooksPath .githooks
 cd "$(git rev-parse --show-toplevel)" || exit 1
@@ -24,5 +26,11 @@ done
 if [ "$docs_only" = true ]; then
   echo "pre-push: only Markdown/.scratch files changed; skipping the test suite." >&2
   exec Rscript dev/check-refs.R
+fi
+Rscript dev/document.R || exit 1
+if ! git diff --quiet -- man NAMESPACE; then
+  echo "pre-push: man/ or NAMESPACE differ from the roxygen comments; commit the regenerated files:" >&2
+  git diff --stat -- man NAMESPACE >&2
+  exit 1
 fi
 exec Rscript dev/test-all.R
