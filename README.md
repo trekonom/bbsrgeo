@@ -82,10 +82,8 @@ using the real BBSR crosswalk:
 path <- bbsr_crosswalk_download(level = "districts", kind = "annual")
 crosswalk <- bbsr_crosswalk_read(path)
 #> Documented fixes to the BBSR crosswalk:
-#> • Applied: ags_old '07235000' -> '07231000' (2011 -> 2012, Bernkastel-Wittlich). Evidence: ?bbsr_crosswalk_fix.
-#> Warning: 4 ags_old/year_from combination(s) have a sum of area shares that deviates from 1 by more than 1%. By pattern:
-#> • 4 combination(s): a single target row with a share below 1, e.g. ags_old = '07135000', year_from = 2014: sum = 0.962
-#> ℹ Please check the original file if in doubt.
+#> • Applied: district-miscoded-bernkastel-wittlich-2011 (2011 -> 2012), 1 row(s) changed. Evidence: ?bbsr_crosswalk_fix.
+#> • Applied: district-single-row-shares-2014-2015 (2014 -> 2015, 2015 -> 2016), 4 row(s) changed. Evidence: ?bbsr_crosswalk_fix.
 
 harmonize_regions(
   popregio,
@@ -98,8 +96,6 @@ harmonize_regions(
   target_year = "current"
 ) |>
   filter(ags == "15088000", year %in% 2005:2008)
-#> Warning: The crosswalk's share_population for 4 ags_old/transition combination(s) do not sum to 1 (tolerance 0.01). They were renormalized so that no part of an absolute value is lost. The inconsistency is in the BBSR crosswalk, not in `data`.
-#> • 4 combination(s) affected (first 4 shown), e.g. 07135000 (2014 -> 2015, sum 0.9828); 07135000 (2015 -> 2016, sum 0.9828); 07137000 (2014 -> 2015, sum 0.0172); 07137000 (2015 -> 2016, sum 0.0172)
 #> The crosswalk's share_population for 4 ags_old/transition combination(s) deviate slightly from 1 (within the tolerance 0.01) and were renormalized to sum to 1.
 #> • 4 combination(s) affected (first 4 shown), e.g. 12069000 (2002 -> 2003, sum 1.0000); 14379000 (1995 -> 1996, sum 1.0000); 14379000 (1998 -> 1999, sum 1.0000); 14379000 (1999 -> 2000, sum 1.0000)
 #> # A tibble: 4 × 4
