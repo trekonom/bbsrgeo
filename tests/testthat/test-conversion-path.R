@@ -142,6 +142,14 @@ test_that("a plan aborts on a mixed-level crosswalk", {
   )
 })
 
+test_that("a plan aborts on a crosswalk lacking transition columns", {
+  crosswalk <- transition_rows(2020)[, c("ags_old", "year_from", "year_to")]
+  expect_error(
+    plan_conversion("01000001", 2020L, crosswalk, 2021L),
+    "lacks the column\\(s\\) `ags_new`"
+  )
+})
+
 test_that("a step maps from and to in the direction of the conversion", {
   crosswalk <- tibble::tibble(
     ags_old = "01000001",

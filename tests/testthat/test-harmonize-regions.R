@@ -1267,3 +1267,32 @@ test_that("employment shares are checked only for the transitions used", {
     )
   )
 })
+
+test_that("harmonize_regions names the columns the crosswalk lacks", {
+  crosswalk <- crosswalk_row("01000001", "01000002", 2020L, 2021L)
+  data <- tibble::tibble(ags = "01000001", year = 2020L, value = 1)
+  harmonize <- function(crosswalk, type) {
+    harmonize_regions(
+      data,
+      crosswalk,
+      "ags",
+      "year",
+      "value",
+      type = type,
+      weight = "population",
+      target_year = 2021L
+    )
+  }
+  expect_error(
+    harmonize(crosswalk[names(crosswalk) != "share_population"], "absolute"),
+    "lacks the column\\(s\\) `share_population`"
+  )
+  expect_error(
+    harmonize(crosswalk[names(crosswalk) != "population_old"], "ratio"),
+    "lacks the column\\(s\\) `population_old`"
+  )
+  # The count weights only a ratio variable.
+  expect_no_error(
+    harmonize(crosswalk[names(crosswalk) != "population_old"], "absolute")
+  )
+})

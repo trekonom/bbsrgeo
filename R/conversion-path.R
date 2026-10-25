@@ -3,11 +3,28 @@
 # applies the plan to values; check_regions() reads what it would drop, so the
 # two cannot disagree.
 
-# Aborts if a crosswalk read with bbsr_crosswalk_read() mixes levels
-# ("districts" and "municipalities"): a district AGS is also a valid municipal
-# one for a kreisfreie Stadt, so the units of the two cannot be told apart. A
-# crosswalk without a `level` column is accepted.
-check_single_level <- function(crosswalk) {
+# Aborts if `crosswalk` lacks a column the conversion needs, naming all of
+# them, or mixes levels ("districts" and "municipalities", as read with
+# bbsr_crosswalk_read()): a district AGS is also a valid municipal one for a
+# kreisfreie Stadt, so the units of the two cannot be told apart. A crosswalk
+# without a `level` column is accepted. The columns are the four of the
+# transitions; with a `weight` also its `share_<weight>`, and for a ratio
+# `type` its `<weight>_old` count, which weights the mean.
+check_crosswalk <- function(crosswalk, weight = NULL, type = NULL) {
+  required <- c("ags_old", "ags_new", "year_from", "year_to")
+  if (!is.null(weight)) {
+    required <- c(required, paste0("share_", weight))
+    if (identical(type, "ratio")) {
+      required <- c(required, paste0(weight, "_old"))
+    }
+  }
+  missing <- setdiff(required, names(crosswalk))
+  if (length(missing) > 0) {
+    rlang::abort(sprintf(
+      "The crosswalk lacks the column(s) %s. Read it with bbsr_crosswalk_read().",
+      paste0("`", missing, "`", collapse = ", ")
+    ))
+  }
   levels <- unique(stats::na.omit(crosswalk[["level"]]))
   if (length(levels) > 1) {
     rlang::abort(sprintf(
@@ -155,8 +172,8 @@ unmapped_at_target_year <- function(ags, crosswalk, target_year) {
 #   and the first transition each is lost at: a tibble with `ags`, `year`,
 #   `year_from`, `year_to` (both equal to `target_year` for the target-year
 #   rule).
-# Aborts on a mixed-level crosswalk, a backcast without `allow_backcast` and a
-# path the crosswalk cannot cover.
+# Aborts on an invalid crosswalk (see check_crosswalk()), a backcast without
+# `allow_backcast` and a path the crosswalk cannot cover.
 plan_conversion <- function(
   ags,
   year,
@@ -164,7 +181,7 @@ plan_conversion <- function(
   target_year,
   allow_backcast = FALSE
 ) {
-  check_single_level(crosswalk)
+  check_crosswalk(crosswalk)
   target_year <- resolve_target_year(target_year, crosswalk)
   ags <- normalize_ags(ags)
   year <- as.integer(year)

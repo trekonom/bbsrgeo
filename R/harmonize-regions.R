@@ -112,6 +112,7 @@ harmonize_regions <- function(
     all(value_cols %in% names(data))
   )
 
+  check_crosswalk(crosswalk, weight, type)
   plan <- plan_conversion(
     data[[ags_col]],
     data[[year_col]],
@@ -185,8 +186,7 @@ plan_rows <- function(plan) {
 # are used as given and only reported. A backcast step uses its shares as given.
 applied_steps <- function(plan, crosswalk, weight, type, renormalize) {
   share_col <- paste0("share_", weight)
-  bases <- crosswalk[[paste0(weight, "_old")]] %||%
-    rep(NA_real_, nrow(crosswalk))
+  bases <- crosswalk[[paste0(weight, "_old")]]
   shares <- crosswalk[[share_col]]
 
   forward_years <- names(plan$steps)[
@@ -237,7 +237,7 @@ harmonize_step <- function(group, step, value_cols, type) {
     ..ags = step$..from,
     ..ags_target = step$..to,
     ..share = step$..share,
-    ..base = step$..base
+    ..base = step[["..base"]]
   )
 
   joined <- dplyr::inner_join(group, crosswalk_join, by = "..ags")
