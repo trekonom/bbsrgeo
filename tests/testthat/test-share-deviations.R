@@ -217,12 +217,14 @@ test_that("report_treatments warns for renormalized groups only in rows", {
   cw <- treatment_crosswalk()
   classified <- classify_share_deviations(cw, "area")
   expect_warning(
+    # The rounding group is also reported, as a message.
     suppressMessages(
       report_treatments(cw, "share_area", classified, rep(TRUE, 3))
     ),
     "do not sum to 1.*renormalized"
   )
   expect_no_warning(
+    # The rounding group in the rows is reported, as a message.
     suppressMessages(
       report_treatments(cw, "share_area", classified, cw$year_from >= 2005)
     )
@@ -233,6 +235,7 @@ test_that("report_treatments reports rounding as a message", {
   cw <- treatment_crosswalk()
   classified <- classify_share_deviations(cw, "area")
   expect_message(
+    # The renormalized group is also reported, as a warning.
     suppressWarnings(
       report_treatments(cw, "share_area", classified, rep(TRUE, 3))
     ),
