@@ -1,6 +1,6 @@
 # Ask BBSR how INKAR indicator 280 is built (numerator and denominator boundary handling)
 
-Status: ready-for-human
+Status: done (moved to GitHub issue #1)
 Category: enhancement
 
 Follow-up from issue 02 (implemented in 97687ce). Not blocking anything; it would turn a documented unknown into a documented fact.

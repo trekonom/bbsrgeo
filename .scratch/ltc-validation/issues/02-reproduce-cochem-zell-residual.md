@@ -1,6 +1,6 @@
 # Reproduce the Cochem-Zell to Rhein-Hunsrück residual; tighten ltc test tolerances
 
-Status: ready-for-human
+Status: done
 Category: bug
 
 Found in review of commit b0e071a (`tests/testthat/test-validate-ltc.R`, vignette).
