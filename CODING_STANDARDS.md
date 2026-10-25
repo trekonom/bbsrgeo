@@ -32,6 +32,14 @@ not apply the Cochem-Zell transfer" wording this rule replaces
 - Tolerances come from measured data: state the observed maximum in the
   comment next to the bound.
 
+## Refactors
+
+A refactor keeps behaviour. Report an error path that changed: an input that
+aborted and now returns a default (`NA`, 0, an empty result), or the reverse,
+unless the commit message says so. Precedent: a ratio conversion without a
+count column went from an error to silent `NA` values when a refactor
+defaulted the missing column.
+
 ## Docs
 
 When a function's responsibility moves, grep `docs/`, `GLOSSARY.md` and
