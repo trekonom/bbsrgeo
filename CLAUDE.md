@@ -58,6 +58,13 @@ shape (the crosswalk tibble):
      read-time checks and the renormalization in `harmonize_regions()` both ask
      `classify_share_deviations()` which transition groups deviate and which
      treatment applies.
+   - `bbsr_crosswalk_read()` drops transitions to a year after
+     `crosswalk_last_year` (2024) with a message, because BBSR republishes
+     files under unchanged names with a new year (districts gained 2024 -> 2025
+     in 2026-10). A CI failure on a row count in `test-crosswalk-read.R` usually
+     means this. To support a later year, raise the constant, rebuild the URL
+     table (`data-raw/bbsr_crosswalk_urls.R`), update the row counts and
+     re-render the README.
    - The real files have up to ~150k `ags_old`/transition groups. Evaluating
      R code per group is slow at that size: a `map_dfr` over groups exceeds
      the 2-minute tool timeout, and a grouped `dplyr::mutate()` with several
