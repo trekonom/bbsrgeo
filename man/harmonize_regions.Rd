@@ -53,6 +53,7 @@ message.}
 \value{
 A tibble with columns \code{ags_col}, \code{year_col}, \code{value_cols}
 (converted), and \code{boundary_year} (= \code{target_year}, resolved to a year).
+If units were dropped, the attribute \code{"unmapped"} lists them (see Details).
 }
 \description{
 Converts a regional statistics dataset (AGS district/municipality key +
@@ -103,8 +104,11 @@ partial sum would understate the total. With \code{type = "ratio"}, old units
 with a missing value are left out of the weighted mean, and the result is
 \code{NA} only if all of them are missing.
 
-An AGS in \code{data} that the crosswalk does not know is dropped with a
-warning, in every year including \code{target_year}. For rows already at
+An AGS in \code{data} that the crosswalk does not know is dropped with one
+warning per call, in every year including \code{target_year}. The warning names
+the first case; the complete list is in \code{attr(result, "unmapped")} (a
+tibble with \code{ags}, \code{year}, \code{year_from} and \code{year_to}, present only when
+something was dropped) and from \code{\link[=check_regions]{check_regions()}}. For rows already at
 \code{target_year}, "known" means the AGS occurs as \code{ags_new} in a transition
 into \code{target_year}; if the crosswalk has no such transition, those rows are
 kept as they are.

@@ -135,4 +135,10 @@ test_that("check_regions reports exactly the rows harmonize_regions drops", {
   ]
   expect_equal(sum(converted$population), nrow(kept))
   expect_equal(sort(reported$ags), c("01000001", "99999999"))
+  # The plan is the one source of both: the conversion carries it on the result.
+  listed <- attr(converted, "unmapped")
+  expect_equal(
+    sort(paste(listed$ags, listed$year)),
+    sort(paste(reported$ags, reported$year))
+  )
 })

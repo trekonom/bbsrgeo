@@ -1052,8 +1052,8 @@ test_that("harmonize_regions drops and warns about an unmapped AGS in the target
     population = c(10, 20, 30, 11, 33)
   )
 
-  # 01000009 is unknown to the crosswalk: it is dropped (with a warning) in
-  # 2020 and, under the same rule, in the target year 2021 - two warnings.
+  # 01000009 is unknown to the crosswalk: it is dropped in 2020 and, under the
+  # same rule, in the target year 2021 - reported in one warning.
   warnings <- testthat::capture_warnings(
     res <- harmonize_regions(
       data,
@@ -1064,8 +1064,11 @@ test_that("harmonize_regions drops and warns about an unmapped AGS in the target
       target_year = 2021L
     )
   )
-  expect_length(warnings, 2)
-  expect_true(all(grepl("01000009", warnings)))
+  expect_length(warnings, 1)
+  expect_match(warnings, "2 area unit/year combination.*01000009")
+  expect_match(warnings, "check_regions\\(\\).*complete list")
+  expect_equal(attr(res, "unmapped")$ags, c("01000009", "01000009"))
+  expect_equal(attr(res, "unmapped")$year, c(2020L, 2021L))
 
   expect_false("01000009" %in% res$ags)
   expect_equal(res$population[res$ags == "01000001" & res$year == 2021L], 11)

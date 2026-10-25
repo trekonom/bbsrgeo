@@ -45,8 +45,11 @@
 #' with a missing value are left out of the weighted mean, and the result is
 #' `NA` only if all of them are missing.
 #'
-#' An AGS in `data` that the crosswalk does not know is dropped with a
-#' warning, in every year including `target_year`. For rows already at
+#' An AGS in `data` that the crosswalk does not know is dropped with one
+#' warning per call, in every year including `target_year`. The warning names
+#' the first case; the complete list is in `attr(result, "unmapped")` (a
+#' tibble with `ags`, `year`, `year_from` and `year_to`, present only when
+#' something was dropped) and from [check_regions()]. For rows already at
 #' `target_year`, "known" means the AGS occurs as `ags_new` in a transition
 #' into `target_year`; if the crosswalk has no such transition, those rows are
 #' kept as they are.
@@ -87,6 +90,7 @@
 #'
 #' @return A tibble with columns `ags_col`, `year_col`, `value_cols`
 #'   (converted), and `boundary_year` (= `target_year`, resolved to a year).
+#'   If units were dropped, the attribute `"unmapped"` lists them (see Details).
 #' @export
 harmonize_regions <- function(
   data,
@@ -107,23 +111,30 @@ harmonize_regions <- function(
     year_col %in% names(data),
     all(value_cols %in% names(data))
   )
-  check_single_level(crosswalk)
-
-  target_year_resolved <- resolve_target_year(target_year, crosswalk)
-
-  base <- tibble::tibble(
-    ..ags = normalize_ags(data[[ags_col]]),
-    ..year = as.integer(data[[year_col]])
-  )
-  base <- dplyr::bind_cols(base, data[value_cols])
 
   if (weight == "employment") {
+    # Before the plan, so a missing employment basis is not reported as a gap.
+    years <- as.integer(data[[year_col]])
+    target <- resolve_target_year(target_year, crosswalk)
     check_employment_available(
       crosswalk,
-      min(base$..year, target_year_resolved),
-      max(base$..year, target_year_resolved)
+      min(years, target),
+      max(years, target)
     )
   }
+
+  plan <- plan_conversion(
+    data[[ags_col]],
+    data[[year_col]],
+    crosswalk,
+    target_year,
+    allow_backcast
+  )
+  target_year_resolved <- plan$target_year
+  report_dropped(plan$dropped)
+
+  base <- tibble::tibble(..ags = plan$ags, ..year = plan$year)
+  base <- dplyr::bind_cols(base, data[value_cols])
 
   crosswalk_forward <- crosswalk
   if (type == "absolute") {
@@ -149,14 +160,12 @@ harmonize_regions <- function(
     start_year <- group$..year[[1]]
     harmonize_path(
       group,
+      plan,
       # Only the forward shares are renormalized; a backcast uses them as given.
       if (start_year > target_year_resolved) crosswalk else crosswalk_forward,
       value_cols,
       type,
-      weight,
-      start_year,
-      target_year_resolved,
-      allow_backcast
+      weight
     )
   })
 
@@ -164,29 +173,40 @@ harmonize_regions <- function(
   col_names <- c(ags_col, year_col, value_cols, "boundary_year")
   names(result)[names(result) == "..ags"] <- ags_col
   names(result)[names(result) == "..year"] <- year_col
-  result[, col_names]
+  result <- result[, col_names]
+  if (nrow(plan$dropped) > 0) {
+    attr(result, "unmapped") <- plan$dropped
+  }
+  result
 }
 
 harmonize_path <- function(
   group,
+  plan,
   crosswalk,
   value_cols,
   type,
-  weight,
-  start_year,
-  target_year,
-  allow_backcast
+  weight
 ) {
-  if (start_year == target_year) {
-    return(drop_unmapped_target_year(group, crosswalk, target_year))
+  start_year <- group$..year[[1]]
+  if (start_year == plan$target_year) {
+    lost <- plan$dropped$ags[plan$dropped$year == start_year]
+    return(group[!(group$..ags %in% lost), , drop = FALSE])
   }
 
-  forward <- start_year < target_year
-  steps <- conversion_steps(crosswalk, start_year, target_year, allow_backcast)
-
+  forward <- start_year < plan$target_year
   current <- group
-  for (step in steps) {
-    current <- harmonize_step(current, step, value_cols, type, weight, forward)
+  for (step in plan$steps[[as.character(start_year)]]) {
+    # The plan holds the structure; the shares come from `crosswalk`.
+    step_crosswalk <- crosswalk[step$..row, , drop = FALSE]
+    current <- harmonize_step(
+      current,
+      step_crosswalk,
+      value_cols,
+      type,
+      weight,
+      forward
+    )
   }
   current
 }
@@ -218,8 +238,6 @@ harmonize_step <- function(
 
   joined <- dplyr::inner_join(group, crosswalk_join, by = "..ags")
 
-  warn_unmapped(unmapped_in_step(group$..ags, step_crosswalk, forward))
-
   if (type == "absolute") {
     result <- dplyr::group_by(joined, .data$..ags_target, .data$..year)
     result <- dplyr::summarise(
@@ -246,20 +264,21 @@ harmonize_step <- function(
   dplyr::rename(result, ..ags = "..ags_target")
 }
 
-warn_unmapped <- function(unmapped) {
-  if (length(unmapped) > 0) {
-    rlang::warn(sprintf(
-      "%d AGS value(s) without a matching crosswalk entry for this transition were dropped: %s",
-      length(unmapped),
-      paste(utils::head(unmapped, 5), collapse = ", ")
-    ))
+# Warns once about the area units of the plan that the conversion drops, and
+# where to find the complete list.
+report_dropped <- function(dropped) {
+  if (nrow(dropped) == 0) {
+    return(invisible())
   }
-}
-
-drop_unmapped_target_year <- function(group, crosswalk, target_year) {
-  unmapped <- unmapped_at_target_year(group$..ags, crosswalk, target_year)
-  warn_unmapped(unmapped)
-  group[!(group$..ags %in% unmapped), , drop = FALSE]
+  rlang::warn(sprintf(
+    paste(
+      "%d area unit/year combination(s) without a matching crosswalk entry",
+      "were dropped (e.g. %s). Run check_regions() with the same arguments",
+      "for a complete list; it is also in attr(<result>, \"unmapped\")."
+    ),
+    nrow(dropped),
+    describe_dropped(dropped[1, ])
+  ))
 }
 
 # BBSR only offers employment as a weight basis from 1997 onward; the earlier

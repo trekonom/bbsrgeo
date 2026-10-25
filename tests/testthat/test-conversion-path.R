@@ -65,12 +65,62 @@ test_that("a conversion crosswalk names its fixed target year", {
 
 test_that("the target-year rule keeps everything when no transition leads there", {
   crosswalk <- transition_rows(2020)
-  expect_equal(
-    unmapped_at_target_year(c("01000001", "99999999"), crosswalk, 2022L),
-    character()
+  data <- c("01000001", "99999999")
+  plan <- plan_conversion(data, 2022L, crosswalk, 2022L)
+  expect_equal(nrow(plan$dropped), 0)
+
+  plan <- plan_conversion(data, 2021L, crosswalk, 2021L)
+  expect_equal(plan$dropped$ags, "99999999")
+  expect_equal(plan$dropped$year_from, 2021L)
+  expect_equal(plan$dropped$year_to, 2021L)
+})
+
+test_that("a plan normalizes the panel and resolves the target year", {
+  crosswalk <- transition_rows(c(2020, 2021))
+  plan <- plan_conversion(
+    c(1000001, 1000001),
+    c(2020, 2020),
+    crosswalk,
+    "current"
   )
-  expect_equal(
-    unmapped_at_target_year(c("01000001", "99999999"), crosswalk, 2021L),
-    "99999999"
+  expect_equal(plan$ags, rep("01000001", 2))
+  expect_equal(plan$year, c(2020L, 2020L))
+  expect_equal(plan$target_year, 2022L)
+  expect_equal(names(plan$steps), "2020")
+  expect_equal(step_years(plan$steps[["2020"]]), c("2020 2021", "2021 2022"))
+})
+
+test_that("a plan lists a unit lost at a later step with that transition", {
+  crosswalk <- rbind(
+    tibble::tibble(
+      ags_old = c("01000001", "01000003"),
+      ags_new = c("01000002", "01000003"),
+      year_from = 2020L,
+      year_to = 2021L
+    ),
+    tibble::tibble(
+      ags_old = "01000003",
+      ags_new = "01000003",
+      year_from = 2021L,
+      year_to = 2022L
+    )
+  )
+  plan <- plan_conversion(
+    c("01000001", "01000003", "99999999"),
+    2020L,
+    crosswalk,
+    2022L
+  )
+  expect_equal(plan$dropped$ags, c("99999999", "01000001"))
+  expect_equal(plan$dropped$year_from, c(2020L, 2021L))
+  expect_equal(plan$dropped$year_to, c(2021L, 2022L))
+})
+
+test_that("a plan aborts on a mixed-level crosswalk", {
+  crosswalk <- rbind(transition_rows(2020), transition_rows(2020))
+  crosswalk$level <- c("districts", "municipalities")
+  expect_error(
+    plan_conversion("01000001", 2020L, crosswalk, 2021L),
+    "mixes levels"
   )
 })

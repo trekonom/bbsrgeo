@@ -37,49 +37,30 @@ check_regions <- function(
 ) {
   stopifnot(ags_col %in% names(data), year_col %in% names(data))
 
-  check_single_level(crosswalk)
-  target_year_resolved <- resolve_target_year(target_year, crosswalk)
-  ags <- normalize_ags(data[[ags_col]])
-  year <- as.integer(data[[year_col]])
-
-  unmapped <- purrr::map_dfr(sort(unique(year)), function(y) {
-    found <- find_unmapped_units(
-      ags[year %in% y],
-      crosswalk,
-      y,
-      target_year_resolved,
-      allow_backcast
-    )
-    found$year <- rep(y, nrow(found))
-    found
-  })
-  dropped <- paste(ags, year) %in% paste(unmapped$ags, unmapped$year)
+  plan <- plan_conversion(
+    data[[ags_col]],
+    data[[year_col]],
+    crosswalk,
+    target_year,
+    allow_backcast
+  )
+  unmapped <- plan$dropped
+  dropped <- paste(plan$ags, plan$year) %in%
+    paste(unmapped$ags, unmapped$year)
 
   if (!any(dropped)) {
     message(sprintf(
       "All %d rows can be mapped to the boundary year %d.",
       nrow(data),
-      target_year_resolved
+      plan$target_year
     ))
   } else {
-    first <- unmapped[1, ]
-    where <- if (first$year_from == first$year_to) {
-      "not an ags_new of any transition into the target year"
-    } else {
-      sprintf(
-        "no entry in the %d -> %d transition",
-        first$year_from,
-        first$year_to
-      )
-    }
     message(sprintf(
-      "%d of %d rows have an AGS the crosswalk cannot map to the boundary year %d and would be dropped (e.g. %s in %d: %s).",
+      "%d of %d rows have an AGS the crosswalk cannot map to the boundary year %d and would be dropped (e.g. %s).",
       sum(dropped),
       nrow(data),
-      target_year_resolved,
-      first$ags,
-      first$year,
-      where
+      plan$target_year,
+      describe_dropped(unmapped[1, ])
     ))
   }
 

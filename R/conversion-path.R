@@ -1,7 +1,7 @@
-# The transitions a conversion passes through, and the Unmapped unit rule that
-# goes with them (see "Unmapped unit" in GLOSSARY.md). harmonize_regions()
-# applies a path to values; check_regions() applies it to the area units alone
-# and reports what the conversion would drop, so the two cannot disagree.
+# The Conversion plan (see GLOSSARY.md): the transitions a conversion passes
+# through, and the Unmapped unit rule that goes with them. harmonize_regions()
+# applies the plan to values; check_regions() reads what it would drop, so the
+# two cannot disagree.
 
 # Aborts if a crosswalk read with bbsr_crosswalk_read() mixes levels
 # ("districts" and "municipalities"): a district AGS is also a valid municipal
@@ -129,12 +129,6 @@ conversion_steps <- function(
   })
 }
 
-# The area units among `ags` that one step has no entry for.
-unmapped_in_step <- function(ags, step_crosswalk, forward) {
-  from_col <- step_columns(forward)$from
-  setdiff(unique(ags), unique(step_crosswalk[[from_col]]))
-}
-
 # Rows already at the target year need no conversion, but face the same
 # unmapped-unit rule: an AGS is mapped if it is an `ags_new` of a transition
 # into `target_year`. Without any such transition nothing can be judged, so
@@ -147,20 +141,78 @@ unmapped_at_target_year <- function(ags, crosswalk, target_year) {
   unique(ags[!(ags %in% into_target)])
 }
 
-# The area units among `ags` (all in boundary year `start_year`) whose value the
-# conversion to `target_year` would lose at least in part, and the first
-# transition each is lost at: a tibble with `ags`, `year_from`, `year_to`
-# (both equal to `target_year` for the target-year rule). Follows each unit
-# through the steps of conversion_steps(), so one that maps at the first step
-# but whose target has no entry at a later one is found as well.
-find_unmapped_units <- function(
+# Plans the conversion of a panel to `target_year`: normalizes the inputs
+# shared by harmonize_regions() and check_regions() and follows every area unit
+# through the transitions of its year. Holds structure only, no values or
+# shares. Returns a list with
+# - ags, year: the normalized area units and integer years of the panel
+# - target_year: `target_year` resolved to a year
+# - steps: per year of the panel (named by year), the transitions to apply in
+#   order; each is a crosswalk subset with its row number in `..row`. Empty for
+#   the target year.
+# - dropped: the area units (per year) the conversion loses at least in part,
+#   and the first transition each is lost at: a tibble with `ags`, `year`,
+#   `year_from`, `year_to` (both equal to `target_year` for the target-year
+#   rule).
+# Aborts on a mixed-level crosswalk, a backcast without `allow_backcast` and a
+# path the crosswalk cannot cover.
+plan_conversion <- function(
   ags,
+  year,
   crosswalk,
-  start_year,
   target_year,
   allow_backcast = FALSE
 ) {
-  ags <- unique(ags)
+  check_single_level(crosswalk)
+  target_year <- resolve_target_year(target_year, crosswalk)
+  ags <- normalize_ags(ags)
+  year <- as.integer(year)
+
+  crosswalk$..row <- seq_len(nrow(crosswalk))
+  years <- sort(unique(year))
+  steps <- lapply(years, function(y) {
+    if (y == target_year) {
+      return(list())
+    }
+    conversion_steps(crosswalk, y, target_year, allow_backcast)
+  })
+  names(steps) <- years
+
+  dropped <- lapply(years, function(y) {
+    found <- find_lost_units(
+      unique(ags[year %in% y]),
+      steps[[as.character(y)]],
+      crosswalk,
+      y,
+      target_year
+    )
+    found$year <- rep(y, nrow(found))
+    found
+  })
+  dropped <- dplyr::bind_rows(
+    tibble::tibble(
+      ags = character(),
+      year_from = integer(),
+      year_to = integer(),
+      year = integer()
+    ),
+    dropped
+  )
+
+  list(
+    ags = ags,
+    year = year,
+    target_year = target_year,
+    steps = steps,
+    dropped = dropped[, c("ags", "year", "year_from", "year_to")]
+  )
+}
+
+# The area units among `ags` (all in boundary year `start_year`) that `steps`
+# would lose at least in part, and the first transition each is lost at.
+# Follows each unit through the steps, so one that maps at the first step but
+# whose target has no entry at a later one is found as well.
+find_lost_units <- function(ags, steps, crosswalk, start_year, target_year) {
   if (start_year == target_year) {
     return(tibble::tibble(
       ags = unmapped_at_target_year(ags, crosswalk, target_year),
@@ -168,9 +220,7 @@ find_unmapped_units <- function(
       year_to = target_year
     ))
   }
-  forward <- start_year < target_year
-  steps <- conversion_steps(crosswalk, start_year, target_year, allow_backcast)
-  cols <- step_columns(forward)
+  cols <- step_columns(start_year < target_year)
 
   lineage <- tibble::tibble(origin = ags, current = ags)
   lost <- list()
@@ -207,4 +257,14 @@ find_unmapped_units <- function(
     lost
   )
   lost[!duplicated(lost$ags), , drop = FALSE]
+}
+
+# One row of `plan$dropped` as "<ags> in <year>: <where>", for messages.
+describe_dropped <- function(row) {
+  where <- if (row$year_from == row$year_to) {
+    "not an ags_new of any transition into the target year"
+  } else {
+    sprintf("no entry in the %d -> %d transition", row$year_from, row$year_to)
+  }
+  sprintf("%s in %d: %s", row$ags, row$year, where)
 }
